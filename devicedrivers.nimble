@@ -10,3 +10,7 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 1.6.0"
+
+requires "https://github.com/EmbeddedNim/nephyr"
+requires "https://github.com/EmbeddedNim/mcu_utils"
+requires "https://github.com/EmbeddedNim/fastrpc"
