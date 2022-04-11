@@ -6,7 +6,7 @@ import zephyr_c/[zdevicetree, drivers/zspi]
 import nephyr/[utils, drivers/gpio]
 
 const
-  SPI_DATA_BYTES = 16
+  SPI_DATA_BYTES = 64
 
   Vref = 4.0'f32
   Bitspace24: int = 2^23
