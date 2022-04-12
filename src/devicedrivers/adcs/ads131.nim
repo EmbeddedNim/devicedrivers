@@ -76,8 +76,8 @@ proc initSpi*(
 ) =
   ## initial the spi buses and ads131 driver
 
-  self.spi_dev = DEVICE_DT_GET(DT_NODELABEL(tok"ads131_spi"))
-  self.cs_ctrl = SPI_CS_CONTROL_PTR_DT(DT_NODELABEL(tok"ads131_pin"), tok`2`)[]
+  self.spi_dev = DEVICE_DT_GET(tok"DT_PARENT(DT_NODELABEL(ads131_dev))")
+  self.cs_ctrl = SPI_CS_CONTROL_PTR_DT(tok"DT_NODELABEL(ads131_dev)", tok`2`)[]
 
   self.spi_cfg = spi_config(
         frequency: spi_freq.uint32, #Fail on this spin of NRF52840, upclock to 20MHz for other MCU's
