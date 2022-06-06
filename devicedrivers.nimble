@@ -11,6 +11,6 @@ srcDir        = "src"
 
 requires "nim >= 1.6.0"
 
-requires "mcu_utils"
-requires "fastrpc"
-requires "nephyr"
+requires "mcu_utils#head"
+requires "fastrpc#head"
+requires "nephyr#head"
