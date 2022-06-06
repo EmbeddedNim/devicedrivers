@@ -11,6 +11,6 @@ srcDir        = "src"
 
 requires "nim >= 1.6.0"
 
-requires "https://github.com/EmbeddedNim/nephyr"
-requires "https://github.com/EmbeddedNim/mcu_utils#main"
-requires "https://github.com/EmbeddedNim/fastrpc#devel"
+requires "mcu_utils"
+requires "fastrpc"
+requires "nephyr"
