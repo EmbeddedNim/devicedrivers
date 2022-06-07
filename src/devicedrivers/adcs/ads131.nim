@@ -1,8 +1,11 @@
 import std/[sequtils, math]
+from os import sleep
 
-import mcu_utils/[basics, timeutils, logging, allocstats]
+import mcu_utils/basics
+import mcu_utils/timeutils
+import mcu_utils/logging
 
-import zephyr_c/[zdevicetree, drivers/zspi]
+import nephyr/zephyr/[zdevicetree, drivers/zspi]
 import nephyr/[utils, drivers/gpio]
 
 const
@@ -148,8 +151,14 @@ proc configure*(self: Ads131Driver) =
 
 proc readChannels*(self: Ads131Driver, data: var openArray[int32], sampleCnt: SampleRng) {.raises: [OSError].} = 
   # read all channels from ads131
-  while self.ndrdy.level() == 1: #Spin until you can read, active low
-    discard
+  logDebug("readChannels: wait nrdyd ")
+  var nready = 1
+  while nready == 1: #Spin until you can read, active low
+    nready = self.ndrdy.level()
+    logDebug("readChannels: wait nrdyd ", nready)
+    os.sleep(10)
+
+  logDebug("readChannels: ready done ")
   self.tx_buf[0] = RDATA.uint8
   var spi_ret = self.execSpi(1,27)
   for i in countup(0, sampleCnt):
@@ -177,18 +186,18 @@ template toVoltage*[T](chval: T,
   chval * coef
 
 proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
-  logDebug("taking averaged ads131 readings")
+  logDebug("taking averaged ads131 readings", "avgCount:", avgCount)
 
   let NC = self.maxChannelCount
 
   # take readings
   var readings = newSeq[AdcReading](avgCount)
-  for idx in countup(0, avgCount):
+  for idx in 0 ..< avgCount:
     readings[idx].ts = currTimeSenML()
     self.readChannels(readings[idx].samples, NC)
   
   # average adc readings
   result = newSeq[float](NC)
   for rd in readings:
-    for i in 0..<6:
+    for i in 0 ..< NC:
       result[i] += rd.samples[i].toFloat() / avgCount.float
