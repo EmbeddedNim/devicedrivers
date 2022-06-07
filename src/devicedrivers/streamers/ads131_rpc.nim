@@ -3,6 +3,8 @@
 ## Fast RPC / Data Queue Support
 ## ============================================================ ##
 
+import std/os, std/json, std/strformat
+
 include mcu_utils/threads
 import mcu_utils/[logging, timeutils, allocstats]
 
@@ -29,14 +31,30 @@ type
 DefineRpcTaskOptions[AdcOptions](name=adcOptionsRpcs):
   discard ## do nothing for now, we still need it below
 
-proc adcSerializer*(queue: AdcDataQ): seq[AdcReading] {.rpcSerializer.} =
+# TODO: move to mcu_utils
+proc `-`*(a, b: TimeSML): TimeSML {.borrow.}
+proc `%`*(a: TimeSML): JsonNode {.borrow.}
+
+proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
   ## called by the socket server every time there's data
   ## on the queue argument given the `rpcEventSubscriber`.
   ## 
   var batch: seq[AdcReading]
   if queue.tryRecv(batch):
-    result = batch
-    discard
+    let ts = currTimeSenML()
+    var res = %* [
+      {"bn": "ads131raw", "bt": ts.float64, "bu": "v"},
+    ]
+
+    for reading in batch:
+      for i in 0..<reading.samples.len():
+        let tsr = ts - reading.ts
+        let vs = reading.samples[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
+        let cs = reading.samples[i].float32.toCurrent(gain=1, senseR=110.0'f32)
+        res.add(%* {"n": fmt"ch{i}-voltage", "u": "V", "t": tsr, "v": vs})
+        res.add(%* {"n": fmt"ch{i}-current", "u": "A", "t": tsr, "v": cs})
+
+    result = rpcPack(res)
     
 proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, raises: [].} =
   ## Thread example that runs the as a time publisher. This is a reducer
@@ -68,6 +86,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
 
         var qvals = isolate adc_batch
         discard queue.trySend(qvals)
+        os.sleep(14)
       except OSError:
         continue
       except IOSelectorsException: #Don't judge me.
@@ -75,18 +94,19 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
 
 
 proc streamThread*(arg: ThreadArg[seq[AdcReading], AdcOptions]) {.thread, nimcall.} = 
-  logInfo "streamThread: ", repr(arg.opt.data)
+  os.sleep(1_000)
+  logInfo "adc-stream thread:", repr(arg.opt.data)
   adcSampler(arg.queue, arg.opt)
 
 
 proc initAds131Streamer*(
     router: var FastRpcRouter,
-    thr: var RpcStreamThread[AdcReadingBatch, AdcOptions], 
+    thr: var RpcStreamThread[seq[AdcReading], AdcOptions],
     ads: Ads131Driver,
     batch = DEFAULT_BATCH_SIZE,
     decimateCnt = 0,
     queueSize = 2,
-): RpcStreamThread[seq[AdcReading], AdcOptions] = 
+) = 
   ## setup the ads131 data streamer, register it to the router, and start the thread.
   var
     adc1q = AdcDataQ.init(size=queueSize)
@@ -95,7 +115,7 @@ proc initAds131Streamer*(
   var tchan: Chan[AdcOptions] = newChan[AdcOptions](1)
   var topt = TaskOption[AdcOptions](data: adcOpt, ch: tchan)
   var arg = ThreadArg[seq[AdcReading],AdcOptions](queue: adc1q, opt: topt)
-  result.createThread(streamThread, move arg)
+  thr.createThread(streamThread, move arg)
 
   router.registerDataStream(
     "adcstream",

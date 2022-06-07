@@ -11,6 +11,5 @@ srcDir        = "src"
 
 requires "nim >= 1.6.0"
 
-requires "https://github.com/EmbeddedNim/nephyrcli#head"
 requires "https://github.com/EmbeddedNim/mcu_utils#head"
 requires "https://github.com/EmbeddedNim/fastrpc#head"
