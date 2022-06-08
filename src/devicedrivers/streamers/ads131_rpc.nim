@@ -56,12 +56,13 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
         res.add(%* {"n": fmt"ch{i}-current", "u": "A", "t": tsr, "v": cs})
 
     result = rpcPack(res)
+    echo "[adcSerialier] serde: ", $result.buf.data.len()
     
 proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, raises: [].} =
   ## Thread example that runs the as a time publisher. This is a reducer
   ## that gathers time samples and outputs arrays of timestamp samples.
   var config = opts.data
-  var sample_count = 0'i32
+  var sample_count = 0'u32
   
   var ads: Ads131Driver = opts.data.ads
   let NC = ads.maxChannelCount
@@ -69,6 +70,9 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
   while true:
     logAllocStats(lvlDebug):
       try:
+        if sample_count mod 200 == 0:
+          logInfo "[adcSample] adc read ", $sample_count
+          logInfo "[adcSample] queue: ", queue.repr(), " ptr: ", queue.unsafeAddr.pointer.repr
         # var adc_batch = AdcReadingBatch(size: config.batch)
         var adc_batch = newSeq[AdcReading](config.batch)
         for i in 0..<config.batch:
@@ -83,7 +87,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
           adc_batch[i].ts = currTimeSenML()
 
           sample_count.inc()
-          adc_batch[i].sample_count = sample_count
+          adc_batch[i].sample_count = cast[int](sample_count)
 
         var qvals = isolate adc_batch
         discard queue.trySend(qvals)
@@ -118,6 +122,7 @@ proc initAds131Streamer*(
   var arg = ThreadArg[seq[AdcReading],AdcOptions](queue: adc1q, opt: topt)
   thr.createThread(streamThread, move arg)
 
+  logInfo "registerDataStream: ", "adc: queue: ", adc1q.repr(), " ptr: ", adc1q.addr.pointer.repr
   router.registerDataStream(
     "adcstream",
     serializer = adcSerializer,
