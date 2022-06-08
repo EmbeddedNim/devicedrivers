@@ -40,6 +40,7 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
   ## called by the socket server every time there's data
   ## on the queue argument given the `rpcEventSubscriber`.
   ## 
+  echo "[adcSerialier] trigger "
   var batch: seq[AdcReading]
   if queue.tryRecv(batch):
     let ts = currTimeSenML()
@@ -72,7 +73,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
       try:
         if sample_count mod 200 == 0:
           logInfo "[adcSample] adc read ", $sample_count
-          logInfo "[adcSample] queue: ", queue.repr(), " ptr: ", queue.unsafeAddr.pointer.repr
+          logInfo "[adcSample] queue: ", " ptr: ", queue.chan.unsafeAddr.pointer.repr
         # var adc_batch = AdcReadingBatch(size: config.batch)
         var adc_batch = newSeq[AdcReading](config.batch)
         for i in 0..<config.batch:
@@ -122,7 +123,7 @@ proc initAds131Streamer*(
   var arg = ThreadArg[seq[AdcReading],AdcOptions](queue: adc1q, opt: topt)
   thr.createThread(streamThread, move arg)
 
-  logInfo "registerDataStream: ", "adc: queue: ", adc1q.repr(), " ptr: ", adc1q.addr.pointer.repr
+  logInfo "registerDataStream: ", "adc:queue:ptr: ", adc1q.chan.unsafeAddr.pointer.repr()
   router.registerDataStream(
     "adcstream",
     serializer = adcSerializer,
