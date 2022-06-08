@@ -41,7 +41,7 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
   ## called by the socket server every time there's data
   ## on the queue argument given the `rpcEventSubscriber`.
   ## 
-  logDebug "[adcSerialier] trigger "
+  logExtraDebug "[adcSerialier] trigger "
   var batch: seq[AdcReading]
   if queue.tryRecv(batch):
     let ts = currTimeSenML()
@@ -58,7 +58,7 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
         res.add(%* {"n": fmt"ch{i}-current", "u": "A", "t": tsr, "v": cs})
 
     result = rpcPack(res)
-    logDebug  "[adcSerialier] serde: ", $result.buf.data.len()
+    logExtraDebug "[adcSerialier] serde: ", $result.buf.data.len()
     
 proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, raises: [].} =
   ## Thread example that runs the as a time publisher. This is a reducer
@@ -74,7 +74,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
       try:
         if sample_count mod 300 == 0:
           logDebug "[adcSample] adc read ", $sample_count
-          logDebug "[adcSample] queue: ", " ptr: ", queue.chan.unsafeAddr.pointer.repr
+          logExtraDebug "[adcSample] queue: ", " ptr: ", queue.chan.unsafeAddr.pointer.repr
         # var adc_batch = AdcReadingBatch(size: config.batch)
         var adc_batch = newSeq[AdcReading](config.batch)
         for i in 0..<config.batch:
