@@ -69,13 +69,6 @@ proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
 var
   adcTimerOpts: AdcOptions
 
-  ## adc timer
-  adcTimer: k_timer
-
-  ## adc kthreads
-  adcThrReader {.exportc.}: k_thread
-  adcThrMCast {.exportc.}: k_thread
-
   adsDriver: Ads131Driver
   adsMaddr: InetClientHandle
 
@@ -112,7 +105,7 @@ proc adcSerializer*(queue: AdcDataQ) =
     smls.add SmlReadingI(kind: BaseNT, ts: ts - lastReading, name: MacAddressArr)
     lastReading = ts
     for reading in batch:
-      for i in 0..<reading.samples:
+      for i in 0..<reading.sample_count:
         let tsr = ts - reading.ts
         var vName: SmlString
         var cName: SmlString
@@ -128,7 +121,7 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     msgBuf.pack(smls)
 
-proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} = 
+proc adcMCaster*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
   ## thread that handles sending UDP multicast whenever if gtes a wake signal 
   logInfo "[adcMCaster] starting ... "
   var sock = newSocket(
@@ -152,12 +145,12 @@ proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} =
       tb = micros()
       logExtraDebug "[adcMCaster] t-dt: " & $(tb.int - ta.int)
 
-        sa = micros()
-        msgBuf.data.setLen(msgBuf.pos)
-        logExtraDebug "[adcMCaster] msg size: " & $msgBuf.data.len()
-        let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
-        sb = micros()
-        logExtraDebug "[adcMCaster] result: " & $res
+      sa = micros()
+      msgBuf.data.setLen(msgBuf.pos)
+      logExtraDebug "[adcMCaster] msg size: " & $msgBuf.data.len()
+      let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
+      sb = micros()
+      logExtraDebug "[adcMCaster] result: " & $res
 
 
 proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
@@ -176,7 +169,7 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
 ## Multicast (UDP) adc streamer
 ## ========================================================================= ##
 
-proc adcReader*(p1, p2, p3: pointer) {.zkThread.} = 
+proc adcReader*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
   echo "[adcReader] starting ... "
   withLock(adcTimerOpts.lock):
     while true:
@@ -190,9 +183,21 @@ proc adcReader*(p1, p2, p3: pointer) {.zkThread.} =
 ## ADC Streamer Timer / Scheduling code
 ## ========================================================================= ##
 
+const stackSz = 8192.BytesSz
+KDefineStack(adcMCasterStack, stackSz.int)
+KDefineStack(adcReaderStack, stackSz.int)
+
 var
-  wakeStr = initString(400) # preallocat string
+  wakeStr = "" # preallocat string
   wakeCount = 0'u32
+
+  ## adc timer
+  adcTimer: k_timer
+
+  ## adc kthreads
+  adcThrReader {.exportc.}: k_thread
+  adcThrMCast {.exportc.}: k_thread
+
 
 proc adcTimerFunc(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
@@ -226,8 +231,8 @@ proc startMcastStreamerThreads*(
 
   adsMaddr = maddr
   adsDriver = ads 
-  adcPThr.createThread(udpThreadA, move arg)
-  adcPThrB.createThread(udpThreadB, move arg)
+  discard adcThrReader.kCreateThread(adcMCaster, stack=adcMCasterStack, stack_size=stackSz)
+  discard adcThrMCast.kCreateThread(adcReader, stack=adcReaderStack, stack_size=stackSz)
 
   adcTimer.createTimer(adcTimerFunc)
   adcTimer.start(duration=2000.Millis, period=1.Millis)
