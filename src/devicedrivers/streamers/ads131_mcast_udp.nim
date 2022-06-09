@@ -83,6 +83,9 @@ var
 
   timeA, timeB: Micros
   readA, readB: Micros
+  readsA: array[400, Micros]
+  readsAidx = 0
+  maxReadsA = 399
   ta, tb: Micros
   sa, saPrev: Micros
   sb, sbPrev: Micros
@@ -98,6 +101,38 @@ var
 var
   wakeStr = "" # preallocate string
   wakeCount = 0'u32 # uint so if we overflow it's fine
+
+proc timingPrints() =
+    # echo ""
+    wakeStr.setLen(0)
+    wakeStr &= "wake ts:" 
+    wakeStr &= millis().repr()
+    wakeStr &= " tdelta broadcasts:" 
+    wakeStr &= repr(timeB - timeA)
+    wakeStr &= " ser:" 
+    wakeStr &= repr(tb - ta)
+    wakeStr &= " adc:" 
+    wakeStr &= repr(readB - readA)
+    wakeStr &= " send:" 
+    wakeStr &= repr(sb - sa)
+    wakeStr &= " snd-dt:" 
+    wakeStr &= repr(sa - saPrev)
+    wakeStr &= " bcnt:" 
+    wakeStr &= $serdeLastBatchCount 
+    wakeStr &= " mpack:" 
+    wakeStr &= $serdeLastByteCount.int
+
+    var avgReadDt = 0
+    let rcnt = min(readsA.len(), maxReadsA )
+    for i in 1 .. rcnt:
+      avgReadDt = avgReadDt + int(readsA[i] - readsA[i-1])
+      readsA[i-1] = 0.Micros
+    avgReadDt = avgReadDt.int div (rcnt-1)
+    readsAidx = 0
+
+    wakeStr &= " avgReadDt:" 
+    wakeStr &= $avgReadDt.int
+    echo wakeStr
 
 
 ## ========================================================================= ##
@@ -130,7 +165,10 @@ proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       timeA = micros() # for timing prints down below
 
       ## take adc reading
-      readA = micros()
+      readA = timeA
+      if readsAidx <= maxReadsA:
+        readsA[readsAidx] = timeA
+        readsAidx.inc()
       adcSampler(adcUdpQ, adsDriver)
       readB = micros()
 
@@ -185,9 +223,9 @@ proc adcSerializer*(queue: AdcDataQ) =
         let tsr = timeSenML(reading.ts - ts)
 
         # voltage channels
-        vName.data[1] = char(i + ord('0'))
-        let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
-        smls.add SmlReadingI(kind: NormalNTVU, name: vName, unit: vUnit, ts: tsr, value: vs)
+        # vName.data[1] = char(i + ord('0'))
+        # let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
+        # smls.add SmlReadingI(kind: NormalNTVU, name: vName, unit: vUnit, ts: tsr, value: vs)
 
         # current channels
         cName.data[1] = char(i + ord('0'))
@@ -239,9 +277,13 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       msgBuf.data.setLen(msgBuf.pos)
       logExtraDebug "[adcMCaster] msg size: " & $msgBuf.data.len()
       let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
+      if res == 0:
+        logInfo "[adcMCaster] send result: " & $res
       sbPrev = sb
       sb.setTime()
       logExtraDebug "[adcMCaster] result: " & $res
+
+
 
 
 
@@ -249,30 +291,11 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
 ## Initializers
 ## ========================================================================= ##
 
+
 proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
-  if wakeCount mod WAKE_COUNT == 0:
-    # echo ""
-    wakeStr.setLen(0)
-    wakeStr &= "timer wake ts:" 
-    wakeStr &= millis().repr()
-    wakeStr &= " tdelta adcReader-to-adcMCast:" 
-    wakeStr &= repr(timeB - timeA)
-    wakeStr &= " serd:" 
-    wakeStr &= repr(tb - ta)
-    wakeStr &= " read:" 
-    wakeStr &= repr(readB - readA)
-    wakeStr &= " send:" 
-    wakeStr &= repr(sb - sa)
-    wakeStr &= " send-ts-delta:" 
-    wakeStr &= repr(sa - saPrev)
-    wakeStr &= " batchCnt:" 
-    wakeStr &= $serdeLastBatchCount 
-    wakeStr &= " mPackBytes:" 
-    wakeStr &= $serdeLastByteCount.int
-    echo wakeStr
-
+  # timingPrints()
   broadcast(adcTimerOpts.timerCond)
 
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
@@ -299,4 +322,7 @@ proc initMCastStreamer*(
 
   logInfo("ads131 mcast: ", adsDriver.repr)
 
+  while true:
+    os.sleep(1_000)
+    timingPrints()
 
