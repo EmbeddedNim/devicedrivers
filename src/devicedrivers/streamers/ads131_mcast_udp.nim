@@ -179,18 +179,12 @@ proc adcSerializer*(queue: AdcDataQ) =
         # voltage channels
         vName.data[1] = char(i + ord('0'))
         let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
-        let vrd = SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
-        echo fmt"{vrd.name.repr=}"
-        echo fmt"{vrd.unit.repr=}"
-        smls.add vrd
+        smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
 
         # current channels
         cName.data[1] = char(i + ord('0'))
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
-        let crd = SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
-        echo fmt"{crd.name.repr=}"
-        echo fmt"{crd.unit.repr=}"
-        smls.add crd
+        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
         logExtraDebug("[adcSampler]", fmt"added reading {smls.len()=}")
 
 
