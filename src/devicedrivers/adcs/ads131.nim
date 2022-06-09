@@ -159,8 +159,6 @@ proc readChannelsRaw*(self: Ads131Driver, data: var openArray[int32], sampleCnt:
     nready = self.ndrdy.level()
   if nready > 1:
     self.ndrdy_stats.inc()
-  # if nready > 4:
-    # logWarn("readChannels: spin wait on nrdyd ", nready)
 
   logDebug("readChannels: ready done ")
   self.tx_buf[0] = RDATA.uint8
