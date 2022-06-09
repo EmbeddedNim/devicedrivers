@@ -172,7 +172,7 @@ proc readChannels*(self: Ads131Driver, count: SampleRng): seq[int32] {.raises: [
   self.readChannels(result, count)
 
 proc readChannels*(self: Ads131Driver): seq[int32] {.raises: [OSError].} = 
-  result = newSeq[int32](count)
+  result = newSeq[int32](self.maxChannelCount)
   self.readChannels(result, self.maxChannelCount)
 
 template toCurrent*[T](chval: T,
@@ -199,7 +199,7 @@ proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
     self.readChannels(readings[idx].samples, self.maxChannelCount)
   
   # average adc readings
-  result = newSeq[float](NC)
+  result = newSeq[float](self.maxChannelCount)
   for rd in readings:
-    for i in 0 ..< NC:
+    for i in 0 ..< self.maxChannelCount:
       result[i] += rd.samples[i].toFloat() / avgCount.float
