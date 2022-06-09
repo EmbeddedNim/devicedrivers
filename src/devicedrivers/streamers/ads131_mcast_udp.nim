@@ -104,7 +104,7 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   var reading: AdcReading
 
   if wakeCount mod WAKE_COUNT == 0:
-    logInfo("[adcSampler]", "reading"
+    logInfo("[adcSampler]", "reading")
   ads.readChannels(reading, ads.maxChannelCount)
 
   # tag reading time and put in queue
