@@ -87,11 +87,40 @@ var
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
 
 ## ========================================================================= ##
+## Thread to take ADC Readings 
+## ========================================================================= ##
+
+proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
+  ## Thread example that runs the as a time publisher. This is a reducer
+  ## that gathers time samples and outputs arrays of timestamp samples.
+  var reading: AdcReading
+  ads.readChannels(reading.samples, ads.maxChannelCount)
+
+  # tag reading time and put in queue
+  reading.ts = currTimeSenML()
+  var qvals = isolate reading
+  discard queue.chan.trySend(qvals)
+
+
+proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
+  ## very simple zephyr thread that ## waits on
+  ## the k_timer to trigger the `timerCond` condition
+  ## 
+  echo "[adcReader] thread starting ... "
+  withLock(adcTimerOpts.lock):
+    while true:
+      wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
+      timeA = micros() # for timing prints down below
+
+      ## take adc reading
+      adcSampler(adcUdpQ, adsDriver)
+
+## ========================================================================= ##
 ## Adc Streamer Multicast UDP socket and serializer
 ## ========================================================================= ##
 
 proc adcSerializer*(queue: AdcDataQ) =
-  ## called by the socket server every time there's data
+  ## called by the socket thraed every time there's data to write
   ## 
 
   logAllocStats(lvlDebug):
@@ -123,8 +152,9 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     msgBuf.pack(smls)
 
-proc adcMCaster*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
-  ## thread that handles sending UDP multicast whenever if gtes a wake signal 
+proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
+  ## zephyr thread that handles sending UDP multicast whenever if gets a wake signal 
+  ## 
   logInfo "[adcMCaster] starting ... "
   var sock = newSocket(
     domain=Domain.AF_INET6,
@@ -135,10 +165,16 @@ proc adcMCaster*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
 
   logDebug "[adcMCaster]::", "socket:", "fd:", sock.getFd().int
   msgBuf = MsgBuffer.init(1500)
+
+  ## Main thread loop
   withLock(adcTimerOpts.lock):
     while true:
-      # for i in 0..<1:
-      wait(adcTimerOpts.serializeCond, adcTimerOpts.lock)
+      for i in 0..<adcTimerOpts.batch:
+        # we wait for batch count timer wakeups 
+        # then we read all adc data from queue
+        # so batch size becomes how many adc readings we're batching up
+        wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
+
       timeB = micros()
       ta = micros()
       msgBuf.data.setLen(1400)
@@ -155,30 +191,6 @@ proc adcMCaster*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       logExtraDebug "[adcMCaster] result: " & $res
 
 
-proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
-  ## Thread example that runs the as a time publisher. This is a reducer
-  ## that gathers time samples and outputs arrays of timestamp samples.
-  var reading: AdcReading
-  ads.readChannels(reading.samples, ads.maxChannelCount)
-  reading.ts = currTimeSenML()
-
-  var qvals = isolate reading
-  discard queue.chan.trySend(qvals)
-
-
-
-## ========================================================================= ##
-## Multicast (UDP) adc streamer
-## ========================================================================= ##
-
-proc adcReader*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
-  echo "[adcReader] starting ... "
-  withLock(adcTimerOpts.lock):
-    while true:
-      wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
-      timeA = micros()
-      adcSampler(adcUdpQ, adsDriver)
-      broadcast(adcTimerOpts.serializeCond)
 
 ## ========================================================================= ##
 ## Initializers
@@ -186,19 +198,21 @@ proc adcReader*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
 
 var
   wakeStr = "" # preallocat string
-  wakeCount = 0'u32
+  wakeCount = 0'u32 # uint so if we overflow it's fine
 
 proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
-  if wakeCount mod 100 == 0:
+  if wakeCount mod 500 == 0:
     wakeStr.setLen(0)
     wakeStr &= "ts:" & millis().repr()
     wakeStr &= " wk:" & $(timeA.int - timeB.int) & "u" 
     wakeStr &= " serd:" & $(tb.int - ta.int) & "u" 
     wakeStr &= " send:" & $(sb.int - sa.int) & "u"
     echo wakeStr
+
   broadcast(adcTimerOpts.timerCond)
+
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
   
 proc startMcastStreamerThreads*(
@@ -220,5 +234,7 @@ proc startMcastStreamerThreads*(
 
   adsMaddr = maddr
   adsDriver = ads 
+
+  logInfo("ads131 mcast: ", adsDriver.repr)
 
 
