@@ -206,7 +206,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   if wakeCount mod 500 == 0:
     wakeStr.setLen(0)
     wakeStr &= "ts:" & millis().repr()
-    wakeStr &= " wk:" & $(timeA.int - timeB.int) & "u" 
+    wakeStr &= " timer wk:" & $(timeA.int - timeB.int) & "u" 
     wakeStr &= " serd:" & $(tb.int - ta.int) & "u" 
     wakeStr &= " send:" & $(sb.int - sa.int) & "u"
     echo wakeStr
