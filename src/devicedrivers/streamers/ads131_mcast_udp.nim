@@ -104,7 +104,7 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
 
   if wakeCount mod WAKE_COUNT == 0:
     logInfo("[adcSampler]", fmt"{ads.maxChannelCount=}")
-  ads.readChannels(reading.samples, ads.maxChannelCount)
+  ads.readChannels(reading, ads.maxChannelCount)
 
   # tag reading time and put in queue
   reading.ts = currTimeSenML()
@@ -149,7 +149,8 @@ proc adcSerializer*(queue: AdcDataQ) =
     logInfo("[adcSampler]", fmt"{batch.len()=}")
     
     for reading in batch:
-      for i in 0..<reading.sample_count:
+      logInfo("[adcSampler]", fmt"batch {reading.sample_count=}")
+      for i in 0..<reading.channel_count:
         let tsr = reading.ts - ts
         var vName: SmlString
         var cName: SmlString
@@ -158,12 +159,16 @@ proc adcSerializer*(queue: AdcDataQ) =
         vName.data[0..3] = ['c', '0', '.', 'v']
         cName.count = 4
 
-        let vs = reading.samples[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
-        let cs = reading.samples[i].float32.toCurrent(gain=1, senseR=110.0'f32)
+        let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
+        let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
         smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: 'V', ts: tsr, value: vs)
         smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: 'A', ts: tsr, value: cs)
+        logInfo("[adcSampler]", fmt"added reading {smls.len()=}")
 
+
+    logInfo("[adcSampler]", fmt"{smls.len()=}")
     msgBuf.pack(smls)
+    logInfo("[adcSampler]", fmt"{msgBuf.data.len()=}")
 
 proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
   ## zephyr thread that handles sending UDP multicast whenever if gets a wake signal 

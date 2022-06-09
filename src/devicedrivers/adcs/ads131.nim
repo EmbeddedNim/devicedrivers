@@ -32,8 +32,8 @@ type
 
   AdcReading* = object
     ts*: TimeSML
-    sample_count*: int
-    samples*: array[8, int32]
+    channel_count*: int
+    channels*: array[8, int32]
 
 type
   CMD* {.pure.} = enum
@@ -149,7 +149,7 @@ proc configure*(self: Ads131Driver) =
   self.sendCMD(OFFSETCAL)
   
 
-proc readChannels*(self: Ads131Driver, data: var openArray[int32], sampleCnt: SampleRng) {.raises: [OSError].} = 
+proc readChannelsRaw*(self: Ads131Driver, data: var openArray[int32], sampleCnt: SampleRng) {.raises: [OSError].} = 
   # read all channels from ads131
   logDebug("readChannels: wait nrdyd ")
   var nready = 1
@@ -167,13 +167,18 @@ proc readChannels*(self: Ads131Driver, data: var openArray[int32], sampleCnt: Sa
     reading = (reading shl 8) shr 8 # Sign extension
     data[i] = reading
 
-proc readChannels*(self: Ads131Driver, count: SampleRng): seq[int32] {.raises: [OSError].} = 
+proc readChannelsRaw*(self: Ads131Driver, count: SampleRng): seq[int32] {.raises: [OSError].} = 
   result = newSeq[int32](count)
-  self.readChannels(result, count)
+  self.readChannelsRaw(result, count)
 
-proc readChannels*(self: Ads131Driver): seq[int32] {.raises: [OSError].} = 
+proc readChannelsRaw*(self: Ads131Driver): seq[int32] {.raises: [OSError].} = 
   result = newSeq[int32](self.maxChannelCount)
-  self.readChannels(result, self.maxChannelCount)
+  self.readChannelsRaw(result, self.maxChannelCount)
+
+proc readChannels*(self: Ads131Driver, reading: var AdcReading, channelCount: int) {.raises: [OSError].} = 
+  self.readChannelsRaw(reading.channels, channelCount)
+proc readChannels*(self: Ads131Driver, reading: var AdcReading) {.raises: [OSError].} = 
+  self.readChannelsRaw(reading.channels, self.maxChannelCount)
 
 template toCurrent*[T](chval: T,
                      gain: static[int],
@@ -196,10 +201,10 @@ proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
   var readings = newSeq[AdcReading](avgCount)
   for idx in 0 ..< avgCount:
     readings[idx].ts = currTimeSenML()
-    self.readChannels(readings[idx].samples, self.maxChannelCount)
+    self.readChannels(readings[idx])
   
   # average adc readings
   result = newSeq[float](self.maxChannelCount)
   for rd in readings:
     for i in 0 ..< self.maxChannelCount:
-      result[i] += rd.samples[i].toFloat() / avgCount.float
+      result[i] += rd.channels[i].toFloat() / avgCount.float
