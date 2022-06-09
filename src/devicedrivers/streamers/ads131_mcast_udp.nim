@@ -84,8 +84,8 @@ var
   timeA, timeB: Micros
   readA, readB: Micros
   ta, tb: Micros
-  sa, saPrev: Millis
-  sb, sbPrev: Millis
+  sa, saPrev: Micros
+  sb, sbPrev: Micros
   serdeLastBatchCount = 0
   serdeLastByteCount = 0.BytesSz
 
