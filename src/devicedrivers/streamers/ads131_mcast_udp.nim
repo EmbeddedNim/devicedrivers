@@ -17,11 +17,14 @@ import mcu_utils/[logging, timeutils, allocstats]
 import fastrpc/server/[fastrpcserver, rpcmethods, protocol]
 
 import mcu_utils/msgbuffer
+import mcu_utils/inetqueues
 import mcu_utils/smlhelpers
 
 import ../adcs/ads131
 
 export smlhelpers
+export inetqueues
+
 
 const
   DEFAULT_BATCH_SIZE = 10
@@ -75,7 +78,7 @@ var
   adsDriver: Ads131Driver
   adsMaddr: InetClientHandle
 
-  adcUdpQ = AdcDataQ.init(size=20)
+  adcUdpQ: AdcDataQ
 
   timeA, timeB: Micros
   ta, tb: Micros
@@ -266,6 +269,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
 proc initMCastStreamer*(
     maddr: InetClientHandle,
     ads: Ads131Driver,
+    adcUdpQ: AdcDataQ,
     batch = DEFAULT_BATCH_SIZE,
     decimateCnt = 0,
     queueSize = 2,
