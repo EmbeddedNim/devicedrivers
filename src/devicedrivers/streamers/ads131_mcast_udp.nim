@@ -244,7 +244,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
     wakeStr.setLen(0)
     wakeStr &= "timer wake ts:" 
     wakeStr &= millis().repr()
-    wakeStr &= " delta adcReader-to-adcMCast-wakes:" 
+    wakeStr &= " tdelta adcReader-to-adcMCast:" 
     wakeStr &= repr(timeB - timeA)
     wakeStr &= " serd:" 
     wakeStr &= repr(tb - ta)
