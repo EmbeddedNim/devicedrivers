@@ -149,7 +149,7 @@ proc adcSerializer*(queue: AdcDataQ) =
     logInfo("[adcSampler]", fmt"{batch.len()=}")
     
     for reading in batch:
-      logInfo("[adcSampler]", fmt"batch {reading.sample_count=}")
+      logInfo("[adcSampler]", fmt"batch {reading.channel_count=}")
       for i in 0..<reading.channel_count:
         let tsr = reading.ts - ts
         var vName: SmlString

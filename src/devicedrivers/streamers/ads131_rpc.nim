@@ -50,10 +50,10 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
     ]
 
     for reading in batch:
-      for i in 0..<reading.samples.len():
+      for i in 0..<reading.channel_count:
         let tsr = ts - reading.ts
-        let vs = reading.samples[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
-        let cs = reading.samples[i].float32.toCurrent(gain=1, senseR=110.0'f32)
+        let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
+        let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
         res.add(%* {"n": fmt"ch{i}-voltage", "u": "V", "t": tsr, "v": vs})
         res.add(%* {"n": fmt"ch{i}-current", "u": "A", "t": tsr, "v": cs})
 
@@ -67,7 +67,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
   var sample_count = 0'u32
   
   var ads: Ads131Driver = opts.data.ads
-  let NC = ads.maxChannelCount
+  let chCount = ads.maxChannelCount
 
   while true:
     logAllocStats(lvlDebug):
@@ -79,17 +79,17 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
         var adc_batch = newSeq[AdcReading](config.batch)
         for i in 0..<config.batch:
           # take readings
-          ads.readChannels(adc_batch[i].samples, NC)
+          ads.readChannels(adc_batch[i], chCount)
 
           # reduce number of samples, decimation!
           if config.decimate_cnt >= 0:
               for j in 0 ..< config.decimate_cnt:
-                ads.readChannels(adc_batch[i].samples, NC)
+                ads.readChannels(adc_batch[i], chCount)
 
           adc_batch[i].ts = currTimeSenML()
 
           sample_count.inc()
-          adc_batch[i].sample_count = cast[int](sample_count)
+          adc_batch[i].channel_count = chCount
 
         var qvals = isolate adc_batch
         discard queue.trySend(qvals)
