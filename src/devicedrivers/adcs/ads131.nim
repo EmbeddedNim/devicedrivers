@@ -30,6 +30,8 @@ type
     tx_buf:  array[SPI_DATA_BYTES, uint8]
     rx_buf:  array[SPI_DATA_BYTES, uint8]
 
+    ndrdy_stats*: uint
+
   AdcReading* = object
     ts*: TimeSML
     channel_count*: int
@@ -153,10 +155,12 @@ proc readChannelsRaw*(self: Ads131Driver, data: var openArray[int32], sampleCnt:
   # read all channels from ads131
   logDebug("readChannels: wait nrdyd ")
   var nready = 1
-  while nready == 1: #Spin until you can read, active low
+  while nready == 1: # Spin until you can read, active low
     nready = self.ndrdy.level()
-    logDebug("readChannels: wait nrdyd ", nready)
-    os.sleep(10)
+  if nready > 1:
+    self.ndrdy_stats.inc()
+  # if nready > 4:
+    # logWarn("readChannels: spin wait on nrdyd ", nready)
 
   logDebug("readChannels: ready done ")
   self.tx_buf[0] = RDATA.uint8

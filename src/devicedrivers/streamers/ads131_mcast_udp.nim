@@ -76,7 +76,7 @@ var
 
   adcUdpQ = AdcDataQ.init(size=20)
 
-  timeA, timeB: Millis
+  timeA, timeB: Micros
   ta, tb: Micros
   sa, sb: Micros
   serdeLastByteCount = 0.BytesSz
@@ -121,7 +121,7 @@ proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
   withLock(adcTimerOpts.lock):
     while true:
       wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
-      timeA = millis() # for timing prints down below
+      timeA = micros() # for timing prints down below
 
       ## take adc reading
       adcSampler(adcUdpQ, adsDriver)
@@ -214,8 +214,8 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
         # then we read all adc data from queue
         # so batch size becomes how many adc readings we're batching up
         wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
+        timeB = micros()
 
-      timeB = millis()
       ta = micros()
       msgBuf.data.setLen(1400)
       msgBuf.setPosition(0)
@@ -240,10 +240,12 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
   if wakeCount mod WAKE_COUNT == 0:
+    echo ""
     wakeStr.setLen(0)
-    wakeStr &= "ts:" & millis().repr()
-    wakeStr &= " timer wk:" 
-    wakeStr &= repr(timeA - timeB)
+    wakeStr &= "timer wake ts:" 
+    wakeStr &= millis().repr()
+    wakeStr &= " delta adcReader-to-adcMCast wakes:" 
+    wakeStr &= repr(timeB - timeA)
     wakeStr &= " serd:" 
     wakeStr &= repr(tb - ta)
     wakeStr &= " send:" 
