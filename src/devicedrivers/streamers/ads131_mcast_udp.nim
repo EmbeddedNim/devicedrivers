@@ -9,7 +9,7 @@ import std/os, std/json, std/strformat
 import std/[sequtils, strutils, locks]
 import std/net
 
-import nephyr/[nets]
+import nephyr/[nets, times]
 
 include mcu_utils/threads
 import mcu_utils/[logging, timeutils, allocstats]
@@ -76,7 +76,7 @@ var
 
   adcUdpQ = AdcDataQ.init(size=20)
 
-  timeA, timeB: Micros
+  timeA, timeB: Millis
   ta, tb: Micros
   sa, sb: Micros
 
@@ -120,7 +120,7 @@ proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
   withLock(adcTimerOpts.lock):
     while true:
       wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
-      timeA = micros() # for timing prints down below
+      timeA = millis() # for timing prints down below
 
       ## take adc reading
       adcSampler(adcUdpQ, adsDriver)
@@ -188,7 +188,7 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
         # so batch size becomes how many adc readings we're batching up
         wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
 
-      timeB = micros()
+      timeB = millis()
       ta = micros()
       msgBuf.data.setLen(1400)
       msgBuf.setPosition(0)
@@ -215,9 +215,12 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   if wakeCount mod WAKE_COUNT == 0:
     wakeStr.setLen(0)
     wakeStr &= "ts:" & millis().repr()
-    wakeStr &= " timer wk:" & $(timeA.int - timeB.int) & "u" 
-    wakeStr &= " serd:" & $(tb.int - ta.int) & "u" 
-    wakeStr &= " send:" & $(sb.int - sa.int) & "u"
+    wakeStr &= " timer wk:" 
+    wakeStr &= repr(timeA - timeB)
+    wakeStr &= " serd:" 
+    wakeStr &= repr(tb - ta)
+    wakeStr &= " send:" 
+    wakeStr &= repr(sb - sa)
     echo wakeStr
 
   broadcast(adcTimerOpts.timerCond)
