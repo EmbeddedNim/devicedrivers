@@ -171,6 +171,10 @@ proc readChannels*(self: Ads131Driver, count: SampleRng): seq[int32] {.raises: [
   result = newSeq[int32](count)
   self.readChannels(result, count)
 
+proc readChannels*(self: Ads131Driver): seq[int32] {.raises: [OSError].} = 
+  result = newSeq[int32](count)
+  self.readChannels(result, self.maxChannelCount)
+
 template toCurrent*[T](chval: T,
                      gain: static[int],
                      senseR: static[float32],
@@ -188,13 +192,11 @@ template toVoltage*[T](chval: T,
 proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)
 
-  let NC = self.maxChannelCount
-
   # take readings
   var readings = newSeq[AdcReading](avgCount)
   for idx in 0 ..< avgCount:
     readings[idx].ts = currTimeSenML()
-    self.readChannels(readings[idx].samples, NC)
+    self.readChannels(readings[idx].samples, self.maxChannelCount)
   
   # average adc readings
   result = newSeq[float](NC)

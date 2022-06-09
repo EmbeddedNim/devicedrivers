@@ -39,14 +39,10 @@ let
       ss
       
 
-  # TODO: auto detect active channels? align it with streams definition
-  # activeChannels = [0]
-
-
 type
   AdcDataQ* = InetEventQueue[AdcReading]
 
-  AdcOptions* {.rpcOption.} = ref object
+  AdcOptions* = ref object
     batch*: int
     ads*: Ads131Driver
     lock: Lock
@@ -57,20 +53,47 @@ type
     size: int
     readings: array[DEFAULT_BATCH_SIZE, AdcReading]
 
-DefineRpcTaskOptions[AdcOptions](name=adcOptionsRpcs):
-  discard ## do nothing for now, we still need it below
 
 proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
+  ## initialize a new adc option type, including locks 
   result = AdcOptions(batch: batch, ads: ads)
   initLock(result.lock)
   initCond(result.timerCond)
   initCond(result.serializeCond)
 
+
+## ========================================================================= ##
+## Adc Streamer Globals
+## ========================================================================= ##
+
 var
+  adcTimerOpts: AdcOptions
+
+  ## adc timer
+  adcTimer: k_timer
+
+  ## adc kthreads
+  adcThrReader {.exportc.}: k_thread
+  adcThrMCast {.exportc.}: k_thread
+
+  adsDriver: Ads131Driver
+  adsMaddr: InetClientHandle
+
+  adcUdpQ = AdcDataQ.init(size=20)
+
+  timeA, timeB: Micros
+  ta, tb: Micros
+  sa, sb: Micros
+
+  ## Globals for adc serialization
   lastReading = currTimeSenML()
   batch  = newSeq[AdcReading](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
+
+## ========================================================================= ##
+## Adc Streamer Multicast UDP socket and serializer
+## ========================================================================= ##
 
 proc adcSerializer*(queue: AdcDataQ) =
   ## called by the socket server every time there's data
@@ -90,8 +113,7 @@ proc adcSerializer*(queue: AdcDataQ) =
     smls.add SmlReadingI(kind: BaseNT, ts: ts - lastReading, name: MacAddressArr)
     lastReading = ts
     for reading in batch:
-      # for i in 0..<reading.samples.len():
-      for i in 0..<4:
+      for i in 0..<reading.samples:
         let tsr = ts - reading.ts
         var vName: SmlString
         var cName: SmlString
@@ -103,13 +125,40 @@ proc adcSerializer*(queue: AdcDataQ) =
         let vs = reading.samples[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
         let cs = reading.samples[i].float32.toCurrent(gain=1, senseR=110.0'f32)
         smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: 'V', ts: tsr, value: vs)
-        # smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: 'A', ts: tsr, value: cs)
+        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: 'A', ts: tsr, value: cs)
 
     msgBuf.pack(smls)
-    # echo "serde:msgBuf: " & $msgBuf.pos
 
-proc adcSerializerRpc*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
-  adcSerializer(queue)
+proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} = 
+  echo "[adcMCaster] starting ... "
+  var sock = newSocket(
+    domain=Domain.AF_INET6,
+    sockType=SockType.SOCK_DGRAM,
+    protocol=Protocol.IPPROTO_UDP,
+    buffered = false
+  )
+
+  logDebug "[SocketServer]::", "started:", "fd:", sock.getFd().int
+  msgBuf = MsgBuffer.init(1500)
+  withLock(adcTimerOpts.lock):
+    while true:
+      # for i in 0..<1:
+      wait(adcTimerOpts.serializeCond, adcTimerOpts.lock)
+      timeB = micros()
+      ta = micros()
+      msgBuf.data.setLen(1400)
+      msgBuf.setPosition(0)
+      adcUdpQ.adcSerializer()
+      tb = micros()
+      logExtraDebug "[udpThreadB] t-dt: " & $(tb.int - ta.int)
+
+        sa = micros()
+        msgBuf.data.setLen(msgBuf.pos)
+        logExtraDebug "[udpThreadB] msg size: " & $msgBuf.data.len()
+        let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
+        sb = micros()
+        logExtraDebug "[udpThreadB] result: " & $res
+
 
 proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   ## Thread example that runs the as a time publisher. This is a reducer
@@ -125,59 +174,15 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
 ## Multicast (UDP) adc streamer
 ## ========================================================================= ##
 
-var
-  adcTimerOpts: AdcOptions
-  adcTimer: k_timer
-  adcPThr: RpcStreamThread[AdcReading, AdcOptions]
-  adcPThrB: RpcStreamThread[AdcReading, AdcOptions]
-  adsDriver: Ads131Driver
-  adsMaddr: InetClientHandle
+proc adcReader*(p1, p2, p3: pointer) {.zkThread.} = 
+  echo "[adcReader] starting ... "
+  withLock(adcTimerOpts.lock):
+    while true:
+      wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
+      timeA = micros()
+      adcSampler(adcUdpQ, adsDriver)
+      broadcast(adcTimerOpts.serializeCond)
 
-  adcUdpQ = AdcDataQ.init(size=20)
-
-  timeA, timeB: Micros
-  ta, tb: Micros
-  sa, sb: Micros
-
-proc udpThreadA*(arg: ThreadArg[AdcReading, AdcOptions]) {.thread, nimcall.} = 
-  {.cast(gcsafe).}:
-    echo "[udpThreadA] starting ... "
-    withLock(adcTimerOpts.lock):
-      while true:
-        wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
-        timeA = micros()
-        adcSampler(adcUdpQ, adsDriver)
-        broadcast(adcTimerOpts.serializeCond)
-
-proc udpThreadB*(arg: ThreadArg[AdcReading, AdcOptions]) {.thread, nimcall.} = 
-  {.cast(gcsafe).}:
-    echo "[udpThreadB] starting ... "
-    var sock = newSocket(
-      domain=Domain.AF_INET6,
-      sockType=SockType.SOCK_DGRAM,
-      protocol=Protocol.IPPROTO_UDP,
-      buffered = false
-    )
-    logDebug "[SocketServer]::", "started:", "fd:", sock.getFd().int
-    msgBuf = MsgBuffer.init(1500)
-    withLock(adcTimerOpts.lock):
-      while true:
-        # for i in 0..<1:
-        wait(adcTimerOpts.serializeCond, adcTimerOpts.lock)
-        timeB = micros()
-        ta = micros()
-        msgBuf.data.setLen(1400)
-        msgBuf.setPosition(0)
-        adcUdpQ.adcSerializer()
-        tb = micros()
-        # echo "[udpThreadB] t-dt: " & $(tb.int - ta.int)
-
-        sa = micros()
-        msgBuf.data.setLen(msgBuf.pos)
-        # echo "[udpThreadB] msg size: " & $msgBuf.data.len()
-        let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
-        sb = micros()
-        # echo "[udpThreadB] result: " & $res
 
 var
   wakeStr = ""
@@ -204,7 +209,6 @@ proc initAds131Streamer*(
     queueSize = 2,
 ) = 
   ## setup the ads131 data streamer, register it to the router, and start the thread.
-  
   adcTimerOpts = newAdcOptions(batch=batch, ads=ads)
   adcTimerOpts.lock.initLock()
   adcTimerOpts.timerCond.initCond()
@@ -222,6 +226,4 @@ proc initAds131Streamer*(
   adcTimer.createTimer(adcTimerFunc)
   adcTimer.start(duration=2000.Millis, period=1.Millis)
 
-  while true:
-    os.sleep(10000)
 
