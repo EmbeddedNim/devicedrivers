@@ -25,6 +25,7 @@ export smlhelpers
 
 const
   DEFAULT_BATCH_SIZE = 10
+  WAKE_COUNT = 400
 
 let
   MacAddressStr* =
@@ -79,6 +80,7 @@ var
   timeA, timeB: Micros
   ta, tb: Micros
   sa, sb: Micros
+  serdeLastBatchCount = 0
   serdeLastByteCount = 0.BytesSz
 
   ## Globals for adc serialization
@@ -91,8 +93,6 @@ var
   wakeStr = "" # preallocate string
   wakeCount = 0'u32 # uint so if we overflow it's fine
 
-const 
-  WAKE_COUNT = 1
 
 ## ========================================================================= ##
 ## Thread to take ADC Readings 
@@ -103,8 +103,8 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   ## that gathers time samples and outputs arrays of timestamp samples.
   var reading: AdcReading
 
-  if wakeCount mod WAKE_COUNT == 0:
-    logInfo("[adcSampler]", "reading")
+  # if wakeCount mod WAKE_COUNT == 0:
+    # logInfo("[adcSampler]", "reading")
   ads.readChannels(reading, ads.maxChannelCount)
 
   # tag reading time and put in queue
@@ -117,7 +117,7 @@ proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
   ## very simple zephyr thread that ## waits on
   ## the k_timer to trigger the `timerCond` condition
   ## 
-  echo "[adcReader] thread starting ... "
+  logInfo "[adcReader] thread starting ... "
   withLock(adcTimerOpts.lock):
     while true:
       wait(adcTimerOpts.timerCond, adcTimerOpts.lock)
@@ -189,6 +189,9 @@ proc adcSerializer*(queue: AdcDataQ) =
 
 
     msgBuf.pack(smls)
+    msgBuf.data.setLen(msgBuf.pos)
+
+    serdeLastBatchCount = batch.len()
     serdeLastByteCount = msgBuf.data.len().BytesSz
     logExtraDebug("[adcSampler]", fmt"{msgBuf.data.len()=}")
 
@@ -240,7 +243,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
   if wakeCount mod WAKE_COUNT == 0:
-    echo ""
+    # echo ""
     wakeStr.setLen(0)
     wakeStr &= "timer wake ts:" 
     wakeStr &= millis().repr()
@@ -250,13 +253,17 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
     wakeStr &= repr(tb - ta)
     wakeStr &= " send:" 
     wakeStr &= repr(sb - sa)
+    wakeStr &= " lstBatchCnt:" 
+    wakeStr &= $serdeLastBatchCount 
+    wakeStr &= " lstMsgPackBytes:" 
+    wakeStr &= $serdeLastByteCount.int
     echo wakeStr
 
   broadcast(adcTimerOpts.timerCond)
 
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
   
-proc startMcastStreamerThreads*(
+proc initMCastStreamer*(
     maddr: InetClientHandle,
     ads: Ads131Driver,
     batch = DEFAULT_BATCH_SIZE,
