@@ -322,7 +322,4 @@ proc initMCastStreamer*(
 
   logInfo("ads131 mcast: ", adsDriver.repr)
 
-  while true:
-    os.sleep(1_000)
-    timingPrints()
 
