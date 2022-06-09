@@ -146,10 +146,9 @@ proc adcSerializer*(queue: AdcDataQ) =
     smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
     lastReading = ts
 
-    logInfo("[adcSampler]", fmt"{batch.len()=}")
+    logExtraDebug("[adcSampler]", fmt"{batch.len()=}")
     
     for reading in batch:
-      logInfo("[adcSampler]", fmt"batch {reading.channel_count=}")
       for i in 0..<reading.channel_count:
         let tsr = reading.ts - ts
         var vName: SmlString
@@ -163,12 +162,11 @@ proc adcSerializer*(queue: AdcDataQ) =
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
         smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: 'V', ts: tsr, value: vs)
         smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: 'A', ts: tsr, value: cs)
-        logInfo("[adcSampler]", fmt"added reading {smls.len()=}")
+        logExtraDebug("[adcSampler]", fmt"added reading {smls.len()=}")
 
 
-    logInfo("[adcSampler]", fmt"{smls.len()=}")
     msgBuf.pack(smls)
-    logInfo("[adcSampler]", fmt"{msgBuf.data.len()=}")
+    logExtraDebug("[adcSampler]", fmt"{msgBuf.data.len()=}")
 
 proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
   ## zephyr thread that handles sending UDP multicast whenever if gets a wake signal 
