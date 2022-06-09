@@ -296,7 +296,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
   if wakeCount mod WAKE_COUNT == 0:
-    timingPrints()
+    logExtraDebug()
   broadcast(adcTimerOpts.timerCond)
 
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
