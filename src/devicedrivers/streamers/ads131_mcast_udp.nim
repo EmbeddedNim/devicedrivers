@@ -269,7 +269,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
 proc initMCastStreamer*(
     maddr: InetClientHandle,
     ads: Ads131Driver,
-    adcUdpQ: AdcDataQ,
+    adcQueueSz: int,
     batch = DEFAULT_BATCH_SIZE,
     decimateCnt = 0,
     queueSize = 2,
