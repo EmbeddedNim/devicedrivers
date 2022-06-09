@@ -176,9 +176,14 @@ proc readChannelsRaw*(self: Ads131Driver): seq[int32] {.raises: [OSError].} =
   self.readChannelsRaw(result, self.maxChannelCount)
 
 proc readChannels*(self: Ads131Driver, reading: var AdcReading, channelCount: int) {.raises: [OSError].} = 
+  ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, channelCount)
+  reading.channel_count = channelCount
+
 proc readChannels*(self: Ads131Driver, reading: var AdcReading) {.raises: [OSError].} = 
+  ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, self.maxChannelCount)
+  reading.channel_count = self.maxChannelCount
 
 template toCurrent*[T](chval: T,
                      gain: static[int],
