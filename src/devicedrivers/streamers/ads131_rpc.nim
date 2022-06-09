@@ -51,7 +51,7 @@ proc adcSerializer*(queue: AdcDataQ): FastRpcParamsBuffer {.rpcSerializer.} =
 
     for reading in batch:
       for i in 0..<reading.channel_count:
-        let tsr = ts - reading.ts
+        let tsr = ts - timeSenML(reading.ts)
         let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
         res.add(%* {"n": fmt"ch{i}-voltage", "u": "V", "t": tsr, "v": vs})
@@ -86,7 +86,7 @@ proc adcSampler*(queue: AdcDataQ, opts: TaskOption[AdcOptions]) {.rpcThread, rai
               for j in 0 ..< config.decimate_cnt:
                 ads.readChannels(adc_batch[i], chCount)
 
-          adc_batch[i].ts = currTimeSenML()
+          adc_batch[i].ts = micros()
 
           sample_count.inc()
           adc_batch[i].channel_count = chCount

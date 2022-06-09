@@ -82,13 +82,14 @@ var
   adsMaddr: InetClientHandle
 
   timeA, timeB: Micros
+  readA, readB: Micros
   ta, tb: Micros
-  sa, sb: Micros
+  sa, sb, sbPrev: Micros
   serdeLastBatchCount = 0
   serdeLastByteCount = 0.BytesSz
 
   ## Globals for adc serialization
-  lastReading = currTimeSenML()
+  lastReading = micros()
   batch  = newSeq[AdcReading](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
@@ -112,7 +113,9 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   ads.readChannels(reading, ads.maxChannelCount)
 
   # tag reading time and put in queue
-  reading.ts = currTimeSenML()
+  readA = micros()
+  reading.ts = micros()
+  readB = micros()
   var qvals = isolate reading
   discard queue.chan.trySend(qvals)
 
@@ -128,7 +131,9 @@ proc adcReaderThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       timeA = micros() # for timing prints down below
 
       ## take adc reading
+      # readA = micros()
       adcSampler(adcUdpQ, adsDriver)
+      # readB = micros()
 
 ## ========================================================================= ##
 ## Adc Streamer Multicast UDP socket and serializer
@@ -146,9 +151,9 @@ proc adcSerializer*(queue: AdcDataQ) =
     batch.setLen(idx)
     # echo "serde:msgBuf: " & $msgBuf.pos
 
-    let ts = currTimeSenML()
+    let ts = micros()
     smls.setLen(0)
-    smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
+    smls.add SmlReadingI(kind: BaseNT, ts: ts.timeSenML(), name: MacAddressArr)
     lastReading = ts
 
     logExtraDebug("[adcSampler]", fmt"{batch.len()=}")
@@ -178,7 +183,7 @@ proc adcSerializer*(queue: AdcDataQ) =
     
     for reading in batch:
       for i in 0..<reading.channel_count:
-        let tsr = reading.ts - ts
+        let tsr = timeSenML(reading.ts - ts)
 
         # voltage channels
         vName.data[1] = char(i + ord('0'))
@@ -234,6 +239,7 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       msgBuf.data.setLen(msgBuf.pos)
       logExtraDebug "[adcMCaster] msg size: " & $msgBuf.data.len()
       let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
+      sbPrev = sb
       sb = micros()
       logExtraDebug "[adcMCaster] result: " & $res
 
@@ -255,11 +261,15 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
     wakeStr &= repr(timeB - timeA)
     wakeStr &= " serd:" 
     wakeStr &= repr(tb - ta)
+    wakeStr &= " read:" 
+    wakeStr &= repr(readB - readA)
     wakeStr &= " send:" 
     wakeStr &= repr(sb - sa)
-    wakeStr &= " lstBatchCnt:" 
+    wakeStr &= " send-dt:" 
+    wakeStr &= repr(sb - sbPrev)
+    wakeStr &= " batchCnt:" 
     wakeStr &= $serdeLastBatchCount 
-    wakeStr &= " lstMsgPackBytes:" 
+    wakeStr &= " mPackBytes:" 
     wakeStr &= $serdeLastByteCount.int
     echo wakeStr
 

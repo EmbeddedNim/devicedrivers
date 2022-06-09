@@ -33,7 +33,7 @@ type
     ndrdy_stats*: uint
 
   AdcReading* = object
-    ts*: TimeSML
+    ts*: Micros
     channel_count*: int
     channels*: array[8, int32]
 
@@ -207,7 +207,7 @@ proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
   # take readings
   var readings = newSeq[AdcReading](avgCount)
   for idx in 0 ..< avgCount:
-    readings[idx].ts = currTimeSenML()
+    readings[idx].ts = micros()
     self.readChannels(readings[idx])
   
   # average adc readings
