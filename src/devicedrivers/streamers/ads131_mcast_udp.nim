@@ -73,12 +73,13 @@ proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
 ## ========================================================================= ##
 
 var
+  adcUdpQ*: AdcDataQ
+
+var
   adcTimerOpts: AdcOptions
 
   adsDriver: Ads131Driver
   adsMaddr: InetClientHandle
-
-  adcUdpQ: AdcDataQ
 
   timeA, timeB: Micros
   ta, tb: Micros
@@ -269,7 +270,6 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
 proc initMCastStreamer*(
     maddr: InetClientHandle,
     ads: Ads131Driver,
-    adcQueueSz: int,
     batch = DEFAULT_BATCH_SIZE,
     decimateCnt = 0,
     queueSize = 2,
@@ -284,7 +284,6 @@ proc initMCastStreamer*(
     topt = TaskOption[AdcOptions](data: adcTimerOpts)
     arg = ThreadArg[AdcReading, AdcOptions](queue: adcUdpQ, opt: topt)
 
-  adcUdpQ = adcUdpQ
   adsMaddr = maddr
   adsDriver = ads 
 
