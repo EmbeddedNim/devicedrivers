@@ -284,6 +284,7 @@ proc initMCastStreamer*(
     topt = TaskOption[AdcOptions](data: adcTimerOpts)
     arg = ThreadArg[AdcReading, AdcOptions](queue: adcUdpQ, opt: topt)
 
+  adcUdpQ = adcUdpQ
   adsMaddr = maddr
   adsDriver = ads 
 
