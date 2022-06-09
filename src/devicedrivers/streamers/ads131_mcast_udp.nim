@@ -104,11 +104,11 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     let ts = currTimeSenML()
     smls.setLen(0)
-    smls.add SmlReadingI(kind: BaseNT, ts: ts - lastReading, name: MacAddressArr)
+    smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
     lastReading = ts
     for reading in batch:
       for i in 0..<reading.sample_count:
-        let tsr = ts - reading.ts
+        let tsr = reading.ts - ts
         var vName: SmlString
         var cName: SmlString
         cName.data[0..3] = ['c', '0', '.', 'v']
