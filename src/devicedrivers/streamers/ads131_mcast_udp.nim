@@ -104,7 +104,7 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   var reading: AdcReading
 
   if wakeCount mod WAKE_COUNT == 0:
-    logInfo("[adcSampler]", fmt"{ads.maxChannelCount=}")
+    logInfo("[adcSampler]", "reading"
   ads.readChannels(reading, ads.maxChannelCount)
 
   # tag reading time and put in queue
@@ -179,12 +179,12 @@ proc adcSerializer*(queue: AdcDataQ) =
         # voltage channels
         vName.data[1] = char(i + ord('0'))
         let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
-        smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
+        smls.add SmlReadingI(kind: NormalNTVU, name: vName, unit: vUnit, ts: tsr, value: vs)
 
         # current channels
         cName.data[1] = char(i + ord('0'))
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
-        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
+        smls.add SmlReadingI(kind: NormalNTVU, name: cName, unit: cUnit, ts: tsr, value: cs)
         logExtraDebug("[adcSampler]", fmt"added reading {smls.len()=}")
 
 
