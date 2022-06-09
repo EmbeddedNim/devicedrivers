@@ -97,7 +97,6 @@ var
 
 proc adcSerializer*(queue: AdcDataQ) =
   ## called by the socket server every time there's data
-  ## on the queue argument given the `rpcEventSubscriber`.
   ## 
 
   logAllocStats(lvlDebug):
@@ -130,7 +129,8 @@ proc adcSerializer*(queue: AdcDataQ) =
     msgBuf.pack(smls)
 
 proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} = 
-  echo "[adcMCaster] starting ... "
+  ## thread that handles sending UDP multicast whenever if gtes a wake signal 
+  logInfo "[adcMCaster] starting ... "
   var sock = newSocket(
     domain=Domain.AF_INET6,
     sockType=SockType.SOCK_DGRAM,
@@ -138,7 +138,7 @@ proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} =
     buffered = false
   )
 
-  logDebug "[SocketServer]::", "started:", "fd:", sock.getFd().int
+  logDebug "[adcMCaster]::", "socket:", "fd:", sock.getFd().int
   msgBuf = MsgBuffer.init(1500)
   withLock(adcTimerOpts.lock):
     while true:
@@ -150,14 +150,14 @@ proc adcMCaster*(p1, p2, p3: pointer) {.zkThread.} =
       msgBuf.setPosition(0)
       adcUdpQ.adcSerializer()
       tb = micros()
-      logExtraDebug "[udpThreadB] t-dt: " & $(tb.int - ta.int)
+      logExtraDebug "[adcMCaster] t-dt: " & $(tb.int - ta.int)
 
         sa = micros()
         msgBuf.data.setLen(msgBuf.pos)
-        logExtraDebug "[udpThreadB] msg size: " & $msgBuf.data.len()
+        logExtraDebug "[adcMCaster] msg size: " & $msgBuf.data.len()
         let res = sock.sendTo(adsMaddr[].host, adsMaddr[].port, msgBuf.data)
         sb = micros()
-        logExtraDebug "[udpThreadB] result: " & $res
+        logExtraDebug "[adcMCaster] result: " & $res
 
 
 proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
@@ -169,6 +169,8 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
 
   var qvals = isolate reading
   discard queue.chan.trySend(qvals)
+
+
 
 ## ========================================================================= ##
 ## Multicast (UDP) adc streamer
@@ -184,8 +186,12 @@ proc adcReader*(p1, p2, p3: pointer) {.zkThread.} =
       broadcast(adcTimerOpts.serializeCond)
 
 
+## ========================================================================= ##
+## ADC Streamer Timer / Scheduling code
+## ========================================================================= ##
+
 var
-  wakeStr = ""
+  wakeStr = initString(400) # preallocat string
   wakeCount = 0'u32
 
 proc adcTimerFunc(timerid: TimerId) {.cdecl.} =
@@ -199,9 +205,9 @@ proc adcTimerFunc(timerid: TimerId) {.cdecl.} =
     wakeStr &= " send:" & $(sb.int - sa.int) & "u"
     echo wakeStr
   broadcast(adcTimerOpts.timerCond)
-  # echo "[adcTimerFunc] timer awake: " & micros().repr()
+  logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
   
-proc initAds131Streamer*(
+proc startMcastStreamerThreads*(
     maddr: InetClientHandle,
     ads: Ads131Driver,
     batch = DEFAULT_BATCH_SIZE,
