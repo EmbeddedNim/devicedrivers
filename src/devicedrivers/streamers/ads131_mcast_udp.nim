@@ -79,6 +79,7 @@ var
   timeA, timeB: Millis
   ta, tb: Micros
   sa, sb: Micros
+  serdeLastByteCount = 0.BytesSz
 
   ## Globals for adc serialization
   lastReading = currTimeSenML()
@@ -148,24 +149,35 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     logExtraDebug("[adcSampler]", fmt"{batch.len()=}")
     
+    var
+      vName: SmlString
+      vUnit: SmlString
+      cName: SmlString
+      cUnit: SmlString
+
+    # brute force for now ;) 
+    vUnit.data[0] = 'V'
+    vUnit.count = 1
+    cUnit.data[0] = 'A'
+    vUnit.count = 1
+
     for reading in batch:
       for i in 0..<reading.channel_count:
         let tsr = reading.ts - ts
-        var vName: SmlString
-        var cName: SmlString
-        cName.data[0..3] = ['c', '0', '.', 'v']
-        cName.count = 4
         vName.data[0..3] = ['c', '0', '.', 'v']
+        vName.count = 4
+        cName.data[0..3] = ['c', '0', '.', 'c']
         cName.count = 4
 
         let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
-        smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: 'V', ts: tsr, value: vs)
-        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: 'A', ts: tsr, value: cs)
+        smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
+        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
         logExtraDebug("[adcSampler]", fmt"added reading {smls.len()=}")
 
 
     msgBuf.pack(smls)
+    serdeLastByteCount = msgBuf.data.len().BytesSz
     logExtraDebug("[adcSampler]", fmt"{msgBuf.data.len()=}")
 
 proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} = 
