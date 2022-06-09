@@ -295,7 +295,8 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
 proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
-  # timingPrints()
+  if wakeCount mod WAKE_COUNT == 0:
+    timingPrints()
   broadcast(adcTimerOpts.timerCond)
 
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
