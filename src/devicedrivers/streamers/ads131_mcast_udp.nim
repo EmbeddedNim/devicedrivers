@@ -156,23 +156,41 @@ proc adcSerializer*(queue: AdcDataQ) =
       cUnit: SmlString
 
     # brute force for now ;) 
+
+    # v data
+    vName.data[0..3] = ['c', '0', '.', 'v']
+    vName.count = 4
+    # v unit
     vUnit.data[0] = 'V'
     vUnit.count = 1
-    cUnit.data[0] = 'A'
-    vUnit.count = 1
 
+    # c data
+    cName.data[0..3] = ['c', '0', '.', 'c']
+    cName.count = 4
+    # c unit
+    cUnit.data[0] = 'A'
+    cUnit.count = 1
+
+    
     for reading in batch:
       for i in 0..<reading.channel_count:
         let tsr = reading.ts - ts
-        vName.data[0..3] = ['c', '0', '.', 'v']
-        vName.count = 4
-        cName.data[0..3] = ['c', '0', '.', 'c']
-        cName.count = 4
 
+        # voltage channels
+        vName.data[1] = char(i + ord('0'))
         let vs = reading.channels[i].float32.toVoltage(gain=1, r1=0.0'f32, r2=1.0'f32)
+        let vrd = SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
+        echo fmt"{vrd.name.repr=}"
+        echo fmt"{vrd.unit.repr=}"
+        smls.add vrd
+
+        # current channels
+        cName.data[1] = char(i + ord('0'))
         let cs = reading.channels[i].float32.toCurrent(gain=1, senseR=110.0'f32)
-        smls.add SmlReadingI(kind: NormalNVU, name: vName, unit: vUnit, ts: tsr, value: vs)
-        smls.add SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
+        let crd = SmlReadingI(kind: NormalNVU, name: cName, unit: cUnit, ts: tsr, value: cs)
+        echo fmt"{crd.name.repr=}"
+        echo fmt"{crd.unit.repr=}"
+        smls.add crd
         logExtraDebug("[adcSampler]", fmt"added reading {smls.len()=}")
 
 
