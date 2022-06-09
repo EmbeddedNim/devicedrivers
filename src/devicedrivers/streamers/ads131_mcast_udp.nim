@@ -86,6 +86,13 @@ var
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
 
+var
+  wakeStr = "" # preallocate string
+  wakeCount = 0'u32 # uint so if we overflow it's fine
+
+const 
+  WAKE_COUNT = 1
+
 ## ========================================================================= ##
 ## Thread to take ADC Readings 
 ## ========================================================================= ##
@@ -94,6 +101,9 @@ proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   ## Thread example that runs the as a time publisher. This is a reducer
   ## that gathers time samples and outputs arrays of timestamp samples.
   var reading: AdcReading
+
+  if wakeCount mod WAKE_COUNT == 0:
+    logInfo("[adcSampler]", fmt"{ads.maxChannelCount=}")
   ads.readChannels(reading.samples, ads.maxChannelCount)
 
   # tag reading time and put in queue
@@ -135,6 +145,9 @@ proc adcSerializer*(queue: AdcDataQ) =
     smls.setLen(0)
     smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
     lastReading = ts
+
+    logInfo("[adcSampler]", fmt"{batch.len()=}")
+    
     for reading in batch:
       for i in 0..<reading.sample_count:
         let tsr = reading.ts - ts
@@ -196,14 +209,10 @@ proc adcMCasterThread*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
 ## Initializers
 ## ========================================================================= ##
 
-var
-  wakeStr = "" # preallocat string
-  wakeCount = 0'u32 # uint so if we overflow it's fine
-
 proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
-  if wakeCount mod 500 == 0:
+  if wakeCount mod WAKE_COUNT == 0:
     wakeStr.setLen(0)
     wakeStr &= "ts:" & millis().repr()
     wakeStr &= " timer wk:" & $(timeA.int - timeB.int) & "u" 
