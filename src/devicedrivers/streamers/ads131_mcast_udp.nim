@@ -132,7 +132,7 @@ proc timingPrints() =
 
     wakeStr &= " avgReadDt:" 
     wakeStr &= $avgReadDt.int
-    echo wakeStr
+    logDebug wakeStr
 
 
 ## ========================================================================= ##
@@ -296,7 +296,7 @@ proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
   if wakeCount mod WAKE_COUNT == 0:
-    logExtraDebug()
+    timingPrints()
   broadcast(adcTimerOpts.timerCond)
 
   logExtraDebug "[adcTimerFunc] timer awake: " & micros().repr()
