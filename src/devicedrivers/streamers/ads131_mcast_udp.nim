@@ -21,6 +21,8 @@ import mcu_utils/smlhelpers
 
 import ../adcs/ads131
 
+export smlhelpers
+
 const
   DEFAULT_BATCH_SIZE = 10
 
@@ -178,28 +180,15 @@ proc adcReader*(p1, p2, p3: pointer) {.zkThread, cdecl.} =
       adcSampler(adcUdpQ, adsDriver)
       broadcast(adcTimerOpts.serializeCond)
 
-
 ## ========================================================================= ##
-## ADC Streamer Timer / Scheduling code
+## Initializers
 ## ========================================================================= ##
-
-const stackSz = 8192.BytesSz
-KDefineStack(adcMCasterStack, stackSz.int)
-KDefineStack(adcReaderStack, stackSz.int)
 
 var
   wakeStr = "" # preallocat string
   wakeCount = 0'u32
 
-  ## adc timer
-  adcTimer: k_timer
-
-  ## adc kthreads
-  adcThrReader {.exportc.}: k_thread
-  adcThrMCast {.exportc.}: k_thread
-
-
-proc adcTimerFunc(timerid: TimerId) {.cdecl.} =
+proc adcTimerFunc*(timerid: TimerId) {.cdecl.} =
   ## well schucks, that won't work...
   wakeCount.inc()
   if wakeCount mod 100 == 0:
@@ -231,10 +220,5 @@ proc startMcastStreamerThreads*(
 
   adsMaddr = maddr
   adsDriver = ads 
-  discard adcThrReader.kCreateThread(adcMCaster, stack=adcMCasterStack, stack_size=stackSz)
-  discard adcThrMCast.kCreateThread(adcReader, stack=adcReaderStack, stack_size=stackSz)
-
-  adcTimer.createTimer(adcTimerFunc)
-  adcTimer.start(duration=2000.Millis, period=1.Millis)
 
 
