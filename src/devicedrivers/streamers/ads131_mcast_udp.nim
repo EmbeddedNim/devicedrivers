@@ -46,7 +46,7 @@ let
       
 
 type
-  AdcDataQ* = InetEventQueue[AdcReading]
+  AdcDataQ* = InetEventQueue[AdcReading[Bits32]]
 
   AdcOptions* = ref object
     batch*: int
@@ -57,7 +57,7 @@ type
 
   AdcReadingBatch* = ref object
     size: int
-    readings: array[DEFAULT_BATCH_SIZE, AdcReading]
+    readings: array[DEFAULT_BATCH_SIZE, AdcReading[Bits32]]
 
 
 proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
@@ -94,7 +94,7 @@ var
 
   ## Globals for adc serialization
   lastReading = micros()
-  batch  = newSeq[AdcReading](10)
+  batch  = newSeq[AdcReading[Bits32]](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
 
@@ -142,7 +142,7 @@ proc timingPrints() =
 proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
   ## Thread example that runs the as a time publisher. This is a reducer
   ## that gathers time samples and outputs arrays of timestamp samples.
-  var reading: AdcReading
+  var reading: AdcReading[Bits32]
 
   # if wakeCount mod WAKE_COUNT == 0:
     # logInfo("[adcSampler]", "reading")
@@ -316,7 +316,7 @@ proc initMCastStreamer*(
 
   var
     topt = TaskOption[AdcOptions](data: adcTimerOpts)
-    arg = ThreadArg[AdcReading, AdcOptions](queue: adcUdpQ, opt: topt)
+    arg = ThreadArg[AdcReading[Bits32], AdcOptions](queue: adcUdpQ, opt: topt)
 
   adsMaddr = maddr
   adsDriver = ads 

@@ -13,6 +13,8 @@ import nephyr/[utils, drivers/gpio]
 const
   SPI_DATA_BYTES = 64
 
+  MAX_CHANNELS* = 8
+
   Vref = 4.0'f32
   Bitspace24: int = 2^23
 
@@ -35,10 +37,11 @@ type
 
     ndrdy_stats*: uint
 
-  AdcReading* = object
+  AdcReading*[T] = object
     ts*: Micros
     channel_count*: int
-    channels*: array[8, int32]
+    channels*: array[8, T]
+
 
 type
   CMD {.pure.} = enum
@@ -218,7 +221,7 @@ proc configure*(self: Ads131Driver) =
   self.sendCMD(OFFSETCAL)
   
 
-proc readChannelsRaw*(self: Ads131Driver, data: var openArray[int32], sampleCnt: SampleRng) {.raises: [OSError].} = 
+proc readChannelsRaw*(self: Ads131Driver, data: var openArray[Bits32], sampleCnt: SampleRng) {.raises: [OSError].} = 
   # read all channels from ads131
   logDebug("readChannels: wait nrdyd ")
   var nready = 1
@@ -234,26 +237,35 @@ proc readChannelsRaw*(self: Ads131Driver, data: var openArray[int32], sampleCnt:
     var reading: int32
     reading = joinBytes32[int32](spi_ret[(i+1)*3..(i+1)*3+2],count=3)
     reading = (reading shl 8) shr 8 # Sign extension
-    data[i] = reading
+    data[i] = reading.Bits32
 
-proc readChannelsRaw*(self: Ads131Driver, count: SampleRng): seq[int32] {.raises: [OSError].} = 
-  result = newSeq[int32](count)
+proc readChannelsRaw*(self: Ads131Driver, count: SampleRng): seq[Bits32] {.raises: [OSError].} = 
+  result = newSeq[Bits32](count)
   self.readChannelsRaw(result, count)
 
-proc readChannelsRaw*(self: Ads131Driver): seq[int32] {.raises: [OSError].} = 
-  result = newSeq[int32](self.maxChannelCount)
+proc readChannelsRaw*(self: Ads131Driver): seq[Bits32] {.raises: [OSError].} = 
+  result = newSeq[Bits32](self.maxChannelCount)
   self.readChannelsRaw(result, self.maxChannelCount)
 
-proc readChannels*(self: Ads131Driver, reading: var AdcReading, channelCount: int) {.raises: [OSError].} = 
+proc readChannels*(self: Ads131Driver, reading: var AdcReading[Bits32], channelCount: int) {.raises: [OSError].} = 
   ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, channelCount)
   reading.channel_count = channelCount
 
-proc readChannels*(self: Ads131Driver, reading: var AdcReading) {.raises: [OSError].} = 
+proc readChannels*(self: Ads131Driver, reading: var AdcReading[Bits32]) {.raises: [OSError].} = 
   ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, self.maxChannelCount)
   reading.channel_count = self.maxChannelCount
 
+# ===============================
+# TODO: move to a better spot
+# 
+template toVoltageDivider*[T](chval: T,
+                     gain: static[float32],
+                     r1: static[float32] = 99.8,
+                     r2: static[float32]): float32 =
+  const coef: float32 = Vref/(Bitspace24.toFloat()*gain)/(r2/(r1+r2))
+  chval * coef
 template toCurrent*[T](chval: T,
                      gain: static[int],
                      senseR: static[float32],
@@ -261,24 +273,17 @@ template toCurrent*[T](chval: T,
   const coef: float32 = Vref/(Bitspace24.toFloat()*gain)/senseR
   chval * coef
 
-template toVoltage*[T](chval: T,
-                     gain: static[float32],
-                     r1: static[float32] = 99.8,
-                     r2: static[float32]): float32 =
-  const coef: float32 = Vref/(Bitspace24.toFloat()*gain)/(r2/(r1+r2))
-  chval * coef
-
-proc avgReading*(self: Ads131Driver, avgCount: int): seq[float] =
+proc avgReading*(self: Ads131Driver, avgCount: int): seq[float32] =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)
 
   # take readings
-  var readings = newSeq[AdcReading](avgCount)
+  var readings = newSeq[AdcReading[Bits32]](avgCount)
   for idx in 0 ..< avgCount:
     readings[idx].ts = micros()
     self.readChannels(readings[idx])
   
   # average adc readings
-  result = newSeq[float](self.maxChannelCount)
+  result = newSeq[float32](self.maxChannelCount)
   for rd in readings:
     for i in 0 ..< self.maxChannelCount:
-      result[i] += rd.channels[i].toFloat() / avgCount.float
+      result[i] += rd.channels[i].int32.float32 / avgCount.float
