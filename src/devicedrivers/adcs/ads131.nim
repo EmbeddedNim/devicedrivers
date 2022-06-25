@@ -100,7 +100,7 @@ proc initSpi*(
   self.ndrdy = ndrdy
   spi_debug(self)
 
-template initSpiDt*(
+template initSpi*(
     self: Ads131Driver,
     spiAlias: static[string],
     dataReadyAlias: static[string],
