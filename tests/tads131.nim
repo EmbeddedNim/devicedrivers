@@ -41,3 +41,10 @@ suite "bit ops":
     let gn = regChSet1.gain
     print gn
     unittest.check gn == ChGain.X2
+
+  test "ch set x16":
+    regChSet1.gain = ChGain.X16
+    print $regChSet1
+    let gn = regChSet1.gain
+    print gn
+    unittest.check gn == ChGain.X16
