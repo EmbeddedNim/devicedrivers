@@ -77,7 +77,10 @@ proc spi_debug(self: Ads131Driver) =
 
 proc initSpi*(
     self: Ads131Driver,
-    spi_freq: Hertz = 4_000_000.Hertz
+    spi_device: ptr device,
+    cs_ctrl: spi_cs_control,
+    ndrdy: Pin,
+    spi_freq: Hertz = 4_000_000.Hertz,
 ) =
   ## initial the spi buses and ads131 driver
 
@@ -86,11 +89,32 @@ proc initSpi*(
 
   self.spi_cfg = spi_config(
         frequency: spi_freq.uint32, #Fail on this spin of NRF52840, upclock to 20MHz for other MCU's
-        operation: SPI_WORD_SET(8) or SPI_TRANSFER_MSB or SPI_OP_MODE_MASTER or SPI_MODE_CPHA,
+        operation: SPI_WORD_SET(8) or
+                    SPI_TRANSFER_MSB or
+                    SPI_OP_MODE_MASTER or
+                    SPI_MODE_CPHA,
         cs: addr self.cs_ctrl)
   
-  self.ndrdy = initPin(alias"ads131_ndrdy",Pins.IN) #GPIO_DT_SPEC_GET(DT_NODELABEL(tok"ads131e08"), tok"int-gpios")
+  self.ndrdy = ndrdy
   spi_debug(self)
+  
+template initSpi*(
+    self: Ads131Driver,
+    spiAlias: static[string],
+    dataReadyAlias: static[string],
+    spiFreq: static[Hertz] = 4_000_000.Hertz,
+    csDelay: static[Micros] = 2.Micros,
+) =
+  # TODO: this can be cleaned up later, or better yet dropped
+  # but for now just use do some static munging
+  # to allow using adc aliases 
+  let
+    spidev = DEVICE_DT_GET(tokFromFmt("DT_PARENT(DT_NODELABEL($1))", spiAlias))
+    csctrl = SPI_CS_CONTROL_PTR_DT(tokFromFmt("DT_NODELABEL($1)", spiAlias),
+                                     tokFrom($(csDelay.int)))[]
+    ndrdy = initPin(tokFromFmt("DT_ALIAS($1)", dataReadyAlias), Pins.IN)
+
+  self.initSpi(spidev, csctrl, ndrdy)
   
 proc newAds131Driver*(
     speed: Hertz,
