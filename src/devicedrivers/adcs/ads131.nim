@@ -74,12 +74,11 @@ type
 
 type
   ChGain* {.pure.} = enum
-    X1 = 0x00
-    X2
-    X4
-    X6
-    X8
-    X12
+    X1  = 0b001 
+    X2  = 0b010
+    X4  = 0b100
+    X8  = 0b101
+    X12  = 0b110
   
   DataRate* {.pure.} = enum
     Dr64k = 0b000
