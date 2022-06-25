@@ -28,8 +28,8 @@ type
     cs_ctrl: spi_cs_control
     spi_cfg: spi_config
     spi_dev: ptr device
-
     ndrdy:   Pin
+
     tx_buf:  array[SPI_DATA_BYTES, uint8]
     rx_buf:  array[SPI_DATA_BYTES, uint8]
 
@@ -74,22 +74,21 @@ type
 
 
 proc spi_debug(self: Ads131Driver) =
-  logDebug "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)
-  logDebug "ads131:", "spi_cfg: ", repr(self.spi_cfg)
-  logDebug "ads131:", "spi_device: ", repr(self.spi_dev)
+  logInfo "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)
+  logInfo "ads131:", "spi_cfg: ", repr(self.spi_cfg)
+  logInfo "ads131:", "spi_device: ", repr(self.spi_dev)
+  # logInfo "ads131:", "ndrdy: ", repr(self.ndrdy)
 
 proc initSpi*(
     self: Ads131Driver,
-    spi_device: ptr device,
-    cs_ctrl: spi_cs_control,
+    spiDevice: ptr device,
+    csCtrl: spi_cs_control,
     ndrdy: Pin,
-    spi_freq: Hertz = 4_000_000.Hertz,
+    spiFreq: Hertz = 4_000_000.Hertz,
 ) =
   ## initial the spi buses and ads131 driver
-
-  self.spi_dev = DEVICE_DT_GET(tok"DT_PARENT(DT_NODELABEL(ads131_dev))")
-  self.cs_ctrl = SPI_CS_CONTROL_PTR_DT(tok"DT_NODELABEL(ads131_dev)", tok`2`)[]
-
+  self.spi_dev = spiDevice
+  self.cs_ctrl = csCtrl
   self.spi_cfg = spi_config(
         frequency: spi_freq.uint32, #Fail on this spin of NRF52840, upclock to 20MHz for other MCU's
         operation: SPI_WORD_SET(8) or
@@ -100,8 +99,8 @@ proc initSpi*(
   
   self.ndrdy = ndrdy
   spi_debug(self)
-  
-template initSpi*(
+
+template initSpiDt*(
     self: Ads131Driver,
     spiAlias: static[string],
     dataReadyAlias: static[string],
@@ -111,6 +110,9 @@ template initSpi*(
   # TODO: this can be cleaned up later, or better yet dropped
   # but for now just use do some static munging
   # to allow using adc aliases 
+  # self.spi_dev = DEVICE_DT_GET(tok"DT_PARENT(DT_NODELABEL(ads131_dev))")
+  # self.cs_ctrl = SPI_CS_CONTROL_PTR_DT(tok"DT_NODELABEL(ads131_dev)", tok`2`)[]
+
   let
     spidev = DEVICE_DT_GET(tokFromFmt("DT_PARENT(DT_NODELABEL($1))", spiAlias))
     csctrl = SPI_CS_CONTROL_PTR_DT(tokFromFmt("DT_NODELABEL($1)", spiAlias),
