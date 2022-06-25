@@ -10,6 +10,7 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 1.6.0"
+requires "print >= 1.0.2" # pretty colored print
 
 requires "https://github.com/EmbeddedNim/mcu_utils#head"
 requires "https://github.com/EmbeddedNim/fastrpc#head"

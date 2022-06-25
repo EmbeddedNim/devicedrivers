@@ -1,7 +1,9 @@
 import std/[sequtils, math]
 from os import sleep
+import std/bitops
 
 import mcu_utils/basics
+import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
 
@@ -21,6 +23,7 @@ type
   Ads131Driver* = ref object
     speed*: Hertz
     maxChannelCount*: int
+    vref*: Volts
 
     cs_ctrl: spi_cs_control
     spi_cfg: spi_config
@@ -38,37 +41,37 @@ type
     channels*: array[8, int32]
 
 type
-  CMD* {.pure.} = enum
-    WAKEUP    = 0x02,
-    STANDBY   = 0x04,
-    RESET     = 0x06,
-    START     = 0x08,
-    STOP      = 0x0A,
-    RDACTAC   = 0x10,
-    SDATAC    = 0x11,
-    RDATA     = 0x12,
-    OFFSETCAL = 0x1A,
-    RREG      = 0x20,
+  CMD {.pure.} = enum
+    WAKEUP    = 0x02
+    STANDBY   = 0x04
+    RESET     = 0x06
+    START     = 0x08
+    STOP      = 0x0A
+    RDACTAC   = 0x10
+    SDATAC    = 0x11
+    RDATA     = 0x12
+    OFFSETCAL = 0x1A
+    RREG      = 0x20
     WREG      = 0x40
 
-type
-  REG* {.pure.} = enum
-    ID          = 0x00,
-    CONFIG1     = 0x01,
-    CONFIG2     = 0x02,
-    CONFIG3     = 0x03,
-    FAULT       = 0x04,
-    CH1SET      = 0x05,
-    CH2SET      = 0x06,
-    CH3SET      = 0x07,
-    CH4SET      = 0x08,
-    CH5SET      = 0x09,
-    CH6SET      = 0x0A,
-    CH7SET      = 0x0B,
-    CH8SET      = 0x0C,
-    FAULT_STATP = 0x12,
-    FAULT_STATN = 0x13,
+  REG {.pure.} = enum
+    ID          = 0x00
+    CONFIG1     = 0x01
+    CONFIG2     = 0x02
+    CONFIG3     = 0x03
+    FAULT       = 0x04
+    CH1SET      = 0x05
+    CH2SET      = 0x06
+    CH3SET      = 0x07
+    CH4SET      = 0x08
+    CH5SET      = 0x09
+    CH6SET      = 0x0A
+    CH7SET      = 0x0B
+    CH8SET      = 0x0C
+    FAULT_STATP = 0x12
+    FAULT_STATN = 0x13
     GPIO        = 0x14
+
 
 proc spi_debug(self: Ads131Driver) =
   logDebug "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)
@@ -118,11 +121,13 @@ template initSpi*(
   
 proc newAds131Driver*(
     speed: Hertz,
+    vref: Volts,
     maxChannelCount: int = 6
 ): Ads131Driver =
   result = Ads131Driver(
     speed: speed,
     maxChannelCount: maxChannelCount,
+    vref: vref,
   )
 
 proc execSpi(self: Ads131Driver, tx_data_len, rx_data_len: static[int]): seq[uint8] = 
