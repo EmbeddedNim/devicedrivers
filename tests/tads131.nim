@@ -12,6 +12,7 @@ suite "bit ops":
 
   setup:
     var regCfg1: RegConfig1
+    var regChSet1: RegChSet
 
   test "dr64k":
     regCfg1.dataRate = Dr64k
@@ -33,3 +34,10 @@ suite "bit ops":
     let dr = regCfg1.dataRate
     print dr
     unittest.check dr == Dr2k
+
+  test "ch set":
+    regChSet1.gain = ChGain.X2
+    print $regChSet1
+    let gn = regChSet1.gain
+    print gn
+    unittest.check gn == ChGain.X2
