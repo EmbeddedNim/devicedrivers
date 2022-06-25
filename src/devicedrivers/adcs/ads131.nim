@@ -102,10 +102,10 @@ proc `dataRate=`(b: var RegConfig1, x: DataRate) = b.uint8.setBits(0..2, x)
 
 
 proc spi_debug(self: Ads131Driver) =
-  logInfo "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)
-  logInfo "ads131:", "spi_cfg: ", repr(self.spi_cfg)
-  logInfo "ads131:", "spi_device: ", repr(self.spi_dev)
-  # logInfo "ads131:", "ndrdy: ", repr(self.ndrdy)
+  logDebug "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)
+  logDebug "ads131:", "spi_cfg: ", repr(self.spi_cfg)
+  logDebug "ads131:", "spi_device: ", repr(self.spi_dev)
+  logDebug "ads131:", "ndrdy: ", repr(self.ndrdy)
 
 proc initSpi*(
     self: Ads131Driver,
