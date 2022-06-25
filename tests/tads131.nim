@@ -45,6 +45,8 @@ suite "bit ops":
   test "ch set x16":
     regChSet1.gain = ChGain.X12
     print $regChSet1
+    print regChSet1.uint8.toHex()
     let gn = regChSet1.gain
     print gn
     unittest.check gn == ChGain.X12
+    unittest.check regChSet1.uint8 == 0x60
