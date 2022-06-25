@@ -27,6 +27,7 @@ export inetqueues
 
 
 const
+  CHS = 4
   DEFAULT_BATCH_SIZE = 10
   WAKE_COUNT = 400
 
@@ -46,21 +47,21 @@ let
       
 
 type
-  AdcDataQ* = InetEventQueue[AdcReading[Bits32]]
+  AdcDataQ*[N: static[int]] = InetEventQueue[AdcReading[N, Bits32]]
 
-  AdcOptions* = ref object
+  AdcOptions*[N] = ref object
     batch*: int
-    ads*: Ads131Driver
+    ads*: Ads131Driver[CHS]
     lock: Lock
     timerCond: Cond
     serializeCond: Cond
 
   AdcReadingBatch* = ref object
     size: int
-    readings: array[DEFAULT_BATCH_SIZE, AdcReading[Bits32]]
+    readings: array[DEFAULT_BATCH_SIZE, AdcReading[CHS, Bits32]]
 
 
-proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
+proc newAdcOptions*[N](batch: int, ads: Ads131Driver[N]): AdcOptions =
   ## initialize a new adc option type, including locks 
   result = AdcOptions(batch: batch, ads: ads)
   initLock(result.lock)
@@ -73,12 +74,12 @@ proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
 ## ========================================================================= ##
 
 var
-  adcUdpQ*: AdcDataQ
+  adcUdpQ*: AdcDataQ[CHS]
 
 var
-  adcTimerOpts: AdcOptions
+  adcTimerOpts: AdcOptions[CHS]
 
-  adsDriver: Ads131Driver
+  adsDriver: Ads131Driver[CHS]
   adsMaddr: InetClientHandle
 
   timeA, timeB: Micros
@@ -94,7 +95,7 @@ var
 
   ## Globals for adc serialization
   lastReading = micros()
-  batch  = newSeq[AdcReading[Bits32]](10)
+  batch  = newSeq[AdcReading[CHS, Bits32]](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
 
@@ -139,14 +140,14 @@ proc timingPrints() =
 ## Thread to take ADC Readings 
 ## ========================================================================= ##
 
-proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
+proc adcSampler*[N](queue: AdcDataQ[N], ads: Ads131Driver[N]) =
   ## Thread example that runs the as a time publisher. This is a reducer
   ## that gathers time samples and outputs arrays of timestamp samples.
-  var reading: AdcReading[Bits32]
+  var reading: AdcReading[N, Bits32]
 
   # if wakeCount mod WAKE_COUNT == 0:
     # logInfo("[adcSampler]", "reading")
-  ads.readChannels(reading, ads.maxChannelCount)
+  ads.readChannels(reading)
 
   # tag reading time and put in queue
   reading.ts = micros()
