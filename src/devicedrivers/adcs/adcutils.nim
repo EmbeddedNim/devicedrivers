@@ -93,10 +93,10 @@ proc convert*[N, T, V](
   # convert each channel
   result = reading.channels[idx].convert(calib.channels[idx])
 
-proc toVolts*[N, T, C](
-    calib: C,
+proc toVolts*[V: Volts, N, T](
+    calib: Calib[N, V],
     reading: AdcReading[N, T],
-): AdcReading[N, Volts] =
+): AdcReading[N, V] =
   # returns a new AdcReading converted to volts. The reading type is `Volts`
   # which are a float32.
   result.ts = reading.ts
