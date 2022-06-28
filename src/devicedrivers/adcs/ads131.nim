@@ -262,6 +262,7 @@ proc readChannelsRaw*[N: static[int]](
     # reading = (reading shl 8) shr 8 # Sign extension
     data[i].setSigned = reading
   data.setLen(N)
+  data.ts = micros()
 
 proc readChannelsRawToSeq*(
     self: Ads131Driver,
