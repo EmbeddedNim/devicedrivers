@@ -58,10 +58,11 @@ suite "bit ops":
       vref = 4.Volts,
       bits = 24,
       bipolar = true,
-      gains = [2.0'f32, 2.0, 2.0, 2.0]
+      gains = [1.0'f32, 1.0, 1.0, 1.0]
     )
 
     var reading: AdcReading[4, Bits24]
+    reading.count = 4
     reading.channels[0] = 100.Bits24
     reading.channels[1] = 500.Bits24
     reading.channels[2] = 0.Bits24
@@ -69,5 +70,6 @@ suite "bit ops":
 
     echo "reading: ", repr(reading)
 
-    let vreading = reading.toVolts(calib)
+    let vreading: AdcReading[4, Volts] = reading.toVolts(calib)
     echo "vreading: ", repr(vreading)
+    unittest.check abs(vreading[0].float32 - 0.0000476837158203125'f32) <= 1.0e-5

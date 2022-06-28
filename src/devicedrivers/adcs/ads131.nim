@@ -236,10 +236,9 @@ proc configure*(self: Ads131Driver) =
   self.sendCMD(OFFSETCAL)
 
 
-proc readChannelsRaw*(
+proc readChannelsRaw*[N: static[int]](
     self: Ads131Driver,
-    data: var openArray[Bits32],
-    sampleCnt: static[int]
+    data: var AdcReading[N, Bits32],
 ) {.raises: [OSError].} =
   # read all channels from ads131
   logDebug("readChannels: wait nrdyd ")
@@ -255,7 +254,9 @@ proc readChannelsRaw*(
 
   logDebug("readChannels: spi done ")
   self.tx_buf[0] = RDATA.uint8
-  for i in 0 ..< sampleCnt:
+
+  data.clear()
+  for i in 0 ..< N:
     var reading: int32
     reading = joinBytes32[int32](spi_ret[(i+1)*3..(i+1)*3+2], count = 3)
     reading = (reading shl 8) shr 8 # Sign extension
@@ -284,7 +285,6 @@ proc readChannels*[N](
   ## primary api for reading from adc with manual channel count
   assert channelCount <= N
   self.readChannelsRaw(reading.channels, channelCount)
-  reading.count = channelCount
 
 proc readChannels*[N](
     self: Ads131Driver[N],
@@ -292,7 +292,6 @@ proc readChannels*[N](
 ) {.raises: [OSError].} =
   ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, N)
-  reading.count = N
 
 proc avgReading*[N](self: Ads131Driver[N], avgCount: int): seq[float32] =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)

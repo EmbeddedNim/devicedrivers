@@ -21,11 +21,37 @@ type
 
   Calib*[N: static[int], V: Volts] = object
     vref*: Volts
-    bits*: int
+    bitspace*: int64
     factor*: float32
     channels*: array[N, ChConfig]
   
   VoltsCalib*[N: static[int]] = Calib[N, Volts]
+
+# ============================================ #
+# AdcReading Procs
+# ============================================ #
+
+proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
+  ## helper for setting adc channel readings
+  reading.channels[idx] = val
+  reading.count = max(reading.count, idx)
+
+proc `[]`*[N, T](reading: AdcReading[N, T], idx: int): T =
+  ## helper for setting adc channel readings
+  result = reading.channels[idx]
+
+proc `setLen`*[N, T](reading: var AdcReading[N, T], idx: int) =
+  ## helper for setting adc channel count
+  reading.count = idx
+
+proc `clear`*[N, T](reading: var AdcReading[N, T]) =
+  ## helper for setting adc channel count
+  reading.count = 0
+
+
+# ============================================ #
+# AdcReading Calibration Utils
+# ============================================ #
 
 proc initVoltsCalib*[N: static[int]](
     vref: Volts,
@@ -34,16 +60,16 @@ proc initVoltsCalib*[N: static[int]](
     gains: array[N, float32]
 ): VoltsCalib[N] =
   result.vref = vref
-  result.bits = if bipolar: 2^(bits-1) else: 2^(bits)
-  result.factor = vref.float32 / bits.float32
+  result.bitspace = if bipolar: 2^(bits-1) else: 2^(bits)
+  result.factor = vref.float32 / result.bitspace.float32
   for i in 0 ..< N:
     result.channels[i].gain = gains[i]
 
+import strformat
+
 proc convert*[N, T, V](val: T, calib: Calib[N, V], ch: ChConfig): V =
-  when distinctBase(T) is SomeSignedInt:
-    result = Volts(calib.factor.float32 / ch.gain)
-  else:
-    result = Volts(calib.factor.float32 / ch.gain)
+  echo fmt"convert: {val.repr=} {calib.repr=} {ch.repr=}"
+  result = Volts(val.float32 / ch.gain * calib.factor.float32)
 
 proc convert*[N, T](reading: AdcReading[N, T], calib: VoltsCalib, idx: int): Volts =
   result = reading.channels[idx].convert(calib, calib.channels[idx])
