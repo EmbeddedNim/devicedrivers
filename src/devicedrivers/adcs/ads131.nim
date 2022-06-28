@@ -1,6 +1,7 @@
 import std/[sequtils, math]
 from os import sleep
 import std/[bitops, strutils]
+import cdecl/bitfields
 
 import mcu_utils/basics
 import mcu_utils/basictypes
@@ -86,25 +87,21 @@ type
     Dr2k  = 0b101
     Dr1k  = 0b111
   
-  RegConfig1* = distinct uint8
-  RegChSet* = distinct uint8
+bitfields RegConfig1(uint8):
+  ## define RegConfig integer with accessors for `bitfields`
+  daisyIn: bool[6..6]
+  clkEn: bool[5..5]
+  dataRate: DataRate[2..0]
+
+bitfields RegChSet(uint8):
+  gain: ChGain[6..4]
+  mux: bool[0..2]
+
+type
   RegChN* = object
     id: range[1..8]
     chset: RegChSet
-
-proc `$`(cfg: RegConfig1): string = "RegConfig1(" & cfg.int.toBin(8) & ")"
-proc daisyIn(b: RegConfig1): bool = cast[bool](b.uint8.bitsliced(6..6))
-proc clkEn(b: RegConfig1): bool = cast[bool](b.uint8.bitsliced(5..5))
-proc dataRate(b: RegConfig1): DataRate  = cast[DataRate](b.uint8.bitsliced(0..2))
-proc `daisyIn=`(b: var RegConfig1, x: bool) = b.uint8.setBits(6..6, x)
-proc `clkEn=`(b: var RegConfig1, x: bool) = b.uint8.setBits(5..5, x)
-proc `dataRate=`(b: var RegConfig1, x: DataRate) = b.uint8.setBits(0..2, x)
-
-proc `$`*(ch: RegChSet): string = "RegChSet(" & ch.int.toBin(8) & ")"
-proc gain*(b: RegChSet): ChGain = cast[ChGain](b.uint8.bitsliced(4..6))
-proc `gain=`*(b: var RegChSet, x: ChGain) = b.uint8.setBits(4..6, x)
-proc mux*(b: RegChSet): bool = cast[bool](b.uint8.bitsliced(0..2))
-proc `mux=`*(b: var RegChSet, x: ChGain) = b.uint8.setBits(0..2, x)
+  
 
 proc spi_debug(self: Ads131Driver) =
   logDebug "ads131:", "cs_ctrl: ", repr(self.cs_ctrl)

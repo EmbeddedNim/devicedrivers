@@ -11,8 +11,8 @@ include devicedrivers/adcs/ads131
 suite "bit ops":
 
   setup:
-    var regCfg1: RegConfig1
-    var regChSet1: RegChSet
+    var regCfg1 {.used.}: RegConfig1
+    var regChSet1 {.used.}: RegChSet
 
   test "dr64k":
     regCfg1.dataRate = Dr64k
