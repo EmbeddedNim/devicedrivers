@@ -262,7 +262,7 @@ proc readChannelsRaw*[N: static[int]](
     # reading = (reading shl 8) shr 8 # Sign extension
     data[i].setSigned = reading
   data.setLen(N)
-  data.ts = micros()
+  data.setTimestamp()
 
 proc readChannelsRawToSeq*(
     self: Ads131Driver,
@@ -292,7 +292,7 @@ proc avgReading*[N](self: Ads131Driver[N], avgCount: int): seq[float32] =
   # take readings
   var readings = newSeq[AdcReading[N, Bits32]](avgCount)
   for idx in 0 ..< avgCount:
-    readings[idx].ts = micros()
+    # readings[idx].ts = getMonoTime()
     self.readChannels(readings[idx])
 
   # average adc readings

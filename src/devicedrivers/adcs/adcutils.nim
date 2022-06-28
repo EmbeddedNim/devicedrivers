@@ -1,13 +1,14 @@
-import std/[typetraits, math]
+import std/[typetraits, math, monotimes]
 
 import mcu_utils/basics
 import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
 
+
 type
   AdcReading*[N: static[int], T] = object
-    ts*: Micros
+    ts*: MonoTime
     count*: int
     channels*: array[N, T]
 
@@ -41,6 +42,10 @@ proc `[]`*[N, T](reading: AdcReading[N, T], idx: int): T =
 proc `setLen`*[N, T](reading: var AdcReading[N, T], idx: int) =
   ## helper for setting adc channel count
   reading.count = idx
+
+proc `setTimestamp`*[N, T](reading: var AdcReading[N, T]) =
+  ## helper for setting adc channel count
+  reading.ts = getMonoTime()
 
 proc `clear`*[N, T](reading: var AdcReading[N, T]) =
   ## helper for setting adc channel count

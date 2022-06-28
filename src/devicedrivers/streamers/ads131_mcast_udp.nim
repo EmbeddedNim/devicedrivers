@@ -94,7 +94,7 @@ var
   serdeLastByteCount = 0.BytesSz
 
   ## Globals for adc serialization
-  lastReading = micros()
+  lastReading = currTimeSenML()
   batch  = newSeq[AdcReading[CHS, Bits32]](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
@@ -135,7 +135,6 @@ proc timingPrints() =
     wakeStr &= $avgReadDt.int
     logDebug wakeStr
 
-
 ## ========================================================================= ##
 ## Thread to take ADC Readings 
 ## ========================================================================= ##
@@ -150,7 +149,7 @@ proc adcSampler*[N](queue: AdcDataQ[N], ads: Ads131Driver[N]) =
   ads.readChannels(reading)
 
   # tag reading time and put in queue
-  reading.ts = micros()
+  reading.setTimestamp()
   var qvals = isolate reading
   discard queue.chan.trySend(qvals)
 
@@ -189,9 +188,9 @@ proc adcSerializer*(queue: AdcDataQ) =
     batch.setLen(idx)
     # echo "serde:msgBuf: " & $msgBuf.pos
 
-    let ts = micros()
+    let ts = currTimeSenML()
     smls.setLen(0)
-    smls.add SmlReadingI(kind: BaseNT, ts: ts.timeSenML(), name: MacAddressArr)
+    smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
     lastReading = ts
 
     logExtraDebug("[adcSampler]", fmt"{batch.len()=}")
@@ -221,7 +220,7 @@ proc adcSerializer*(queue: AdcDataQ) =
     
     for reading in batch:
       for i in 0..<reading.count:
-        let tsr = timeSenML(reading.ts - ts)
+        let tsr = reading.ts.timeSenML() - ts
 
         # voltage channels
         # vName.data[1] = char(i + ord('0'))
