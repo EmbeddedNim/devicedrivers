@@ -261,6 +261,7 @@ proc readChannelsRaw*[N: static[int]](
     reading = joinBytes32[int32](spi_ret[(i+1)*3..(i+1)*3+2], count = 3)
     reading = (reading shl 8) shr 8 # Sign extension
     data[i] = reading.Bits32
+  data.setLen(N)
 
 proc readChannelsRawToSeq*(
     self: Ads131Driver,

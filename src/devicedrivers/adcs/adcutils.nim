@@ -34,7 +34,7 @@ type
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
   ## helper for setting adc channel readings
   reading.channels[idx] = val
-  reading.count = max(reading.count, idx)
+  # reading.count = max(reading.count, idx)
 
 proc `[]`*[N, T](reading: AdcReading[N, T], idx: int): T =
   ## helper for setting adc channel readings
