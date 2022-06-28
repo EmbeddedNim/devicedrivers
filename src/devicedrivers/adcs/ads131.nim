@@ -222,8 +222,11 @@ proc configure*(self: Ads131Driver) =
   self.sendCMD(OFFSETCAL)
 
 
-proc readChannelsRaw*(self: Ads131Driver, data: var openArray[Bits32],
-    sampleCnt: static[int]) {.raises: [OSError].} =
+proc readChannelsRaw*(
+    self: Ads131Driver,
+    data: var openArray[Bits32],
+    sampleCnt: static[int]
+) {.raises: [OSError].} =
   # read all channels from ads131
   logDebug("readChannels: wait nrdyd ")
   var nready = 1
@@ -241,23 +244,35 @@ proc readChannelsRaw*(self: Ads131Driver, data: var openArray[Bits32],
     reading = (reading shl 8) shr 8 # Sign extension
     data[i] = reading.Bits32
 
-proc readChannelsRaw*(self: Ads131Driver, count: SampleRng): seq[
-    Bits32] {.raises: [OSError].} =
+proc readChannelsRaw*(
+    self: Ads131Driver,
+    count: SampleRng
+): seq[Bits32] {.raises: [OSError].} =
+  ## read adc raw channels with count
   result = newSeq[Bits32](count)
   self.readChannelsRaw(result, count)
 
-proc readChannelsRaw*(self: Ads131Driver): seq[Bits32] {.raises: [OSError].} =
+proc readChannelsRaw*(
+    self: Ads131Driver
+): seq[Bits32] {.raises: [OSError].} =
+  ## read raw channels
   result = newSeq[Bits32](self.maxChannelCount)
   self.readChannelsRaw(result, self.maxChannelCount)
 
-proc readChannels*[N](self: Ads131Driver[N], reading: var AdcReading[N, Bits32],
-    channelCount: int) {.raises: [OSError].} =
-  ## primary api for reading from adc
+proc readChannels*[N](
+    self: Ads131Driver[N];
+    reading: var AdcReading[N, Bits32],
+    channelCount: int
+) {.raises: [OSError].} =
+  ## primary api for reading from adc with manual channel count
+  assert channelCount <= N
   self.readChannelsRaw(reading.channels, channelCount)
   reading.channel_count = channelCount
 
-proc readChannels*[N](self: Ads131Driver[N], reading: var AdcReading[N,
-    Bits32]) {.raises: [OSError].} =
+proc readChannels*[N](
+    self: Ads131Driver[N],
+    reading: var AdcReading[N, Bits32]
+) {.raises: [OSError].} =
   ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, N)
 
