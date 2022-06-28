@@ -52,36 +52,48 @@ proc `clear`*[N, T](reading: var AdcReading[N, T]) =
 # 
 # this section is the initial *volts calibration* for an adc
 #
+# Generic Type Name Conventions:
+# - `N` number of channels (must be static[int] for compile time)
+# - `T` actual reading type and implies incoming type
+# - `V` actual reading type but implies outgoing type
+# - `F` channel conversion "factor" config
+# - `C` calibration config object
 
 type
-  ChConfig* = object
+  OneFactorConv* = object
     # per channel config for a calibration setup
     calFactor*: float32
 
-  Calib*[N: static[int], T] = object
-    # fully generic calibration 
-    vref*: Volts
-    bitspace*: int64
-    factor*: float32
-    channels*: array[N, ChConfig]
-  
-proc convert*[T](val: T, ch: ChConfig): Volts =
-  # convert to volts
-  result = Volts(val.float32 * ch.calFactor)
+  TwoFactorConv* = object
+    # per channel config for a calibration setup
+    calFactor*: float32
+    calOffset*: float32
 
-proc convert*[N, T, V](
+
+  Calib*[N: static[int], F, V] = array[N, F]
+
+
+proc convert*[T, V](res: var V, val: T, ch: OneFactorConv): V =
+  # convert to volts
+  res = V(val.float32 * ch.calFactor)
+
+proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv): V =
+  # convert to volts
+  res = V(val.float32 * ch.calFactor + ch.calOffset)
+
+proc convert*[N, T, F, V](
     reading: AdcReading[N, T],
-    calib: Calib[N, V],
+    calib: Calib[N, F, V],
     idx: int
 ): V =
   # convert each channel
-  result = reading.channels[idx].convert(calib.channels[idx])
+  result.convert(reading.channels[idx], calib[idx])
 
-proc combine*[N, T, V](
-    a: Calib[N, T],
-    b: Calib[N, V],
+proc combine*[N, T, F, G, V](
+    a: Calib[N, F, T],
+    b: Calib[N, G, V],
     idx: int
-): Calib[N, V] =
+): Calib[N, G, V] =
   # combine calibs??
   discard
 
@@ -92,24 +104,24 @@ proc combine*[N, T, V](
 #
 
 type
-  VoltsCalib*[N: static[int]] = Calib[N, Volts] #\
+  VoltsCalib*[N: static[int]] = Calib[N, OneFactorConv, Volts]
+
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
 proc initVoltsCalib*[N: static[int]](
     vref: Volts,
     bits: range[0..64],
     bipolar: bool,
-    gains: array[N, float32]
+    gains: array[N, float32],
 ): VoltsCalib[N] =
   ## properly create a volts calibration
-  result.vref = vref
-  result.bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
-  result.factor = vref.float32 / result.bitspace.float32
+  let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
+  let factor = vref.float32 / bitspace.float32
   for i in 0 ..< N:
-    result.channels[i].calFactor = result.factor / gains[i]
+    result[i].calFactor = factor / gains[i]
 
-proc convert*[V: Volts, N, T](
-    calib: Calib[N, V],
+proc convert*[N, T, F, V](
+    calib: Calib[N, F, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
   # returns a new AdcReading converted to volts. The reading type is `Volts`
