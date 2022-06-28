@@ -56,8 +56,7 @@ proc `clear`*[N, T](reading: var AdcReading[N, T]) =
 # - `N` number of channels (must be static[int] for compile time)
 # - `T` actual reading type and implies incoming type
 # - `V` actual reading type but implies outgoing type
-# - `F` channel conversion "factor" config
-# - `C` calibration config object
+# - `G` calibration factors array
 
 type
   OneFactorConv* = object
@@ -70,7 +69,7 @@ type
     calOffset*: float32
 
 
-  Calib*[N: static[int], F, V] = array[N, F]
+  Calibs*[N: static[int], G, V] = array[N, G]
 
 
 proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
@@ -81,8 +80,8 @@ proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor + ch.calOffset)
 
-proc convert*[N, T, F, V](
-    calib: Calib[N, F, V],
+proc convert*[N, T, G, V](
+    calib: Calibs[N, G, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
   # returns a new AdcReading converted to volts. The reading type is `Volts`
@@ -92,11 +91,11 @@ proc convert*[N, T, F, V](
   for i in 0 ..< reading.count:
     result[i].convert(reading[i], calib[i])
 
-proc combine*[N, T, F, G, V](
-    a: Calib[N, F, T],
-    b: Calib[N, G, V],
+proc combine*[N, T, G1, G2, V](
+    a: Calibs[N, G1, T],
+    b: Calibs[N, G2, V],
     idx: int
-): Calib[N, G, V] =
+): Calibs[N, G2, V] =
   # combine calibs??
   discard
 
@@ -107,7 +106,7 @@ proc combine*[N, T, F, G, V](
 #
 
 type
-  VoltsCalib*[N: static[int]] = Calib[N, OneFactorConv, Volts]
+  VoltsCalib*[N: static[int]] = Calibs[N, OneFactorConv, Volts]
 
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
