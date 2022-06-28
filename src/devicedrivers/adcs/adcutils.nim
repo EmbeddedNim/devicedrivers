@@ -56,7 +56,7 @@ proc `clear`*[N, T](reading: var AdcReading[N, T]) =
 type
   ChConfig* = object
     # per channel config for a calibration setup
-    gain*: float32
+    calFactor*: float32
 
   Calib*[N: static[int], T] = object
     # fully generic calibration 
@@ -79,11 +79,11 @@ proc initVoltsCalib*[N: static[int]](
   result.bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   result.factor = vref.float32 / result.bitspace.float32
   for i in 0 ..< N:
-    result.channels[i].gain = gains[i]
+    result.channels[i].calFactor = result.factor / gains[i]
 
 proc convert*[N, T](val: T, calib: VoltsCalib[N], ch: ChConfig): Volts =
   # convert to volts
-  result = Volts(val.float32 / ch.gain * calib.factor.float32)
+  result = Volts(val.float32 * ch.calFactor)
 
 proc convert*[N, T, V](reading: AdcReading[N, T], calib: Calib[N, V], idx: int): V =
   # convert each channel
