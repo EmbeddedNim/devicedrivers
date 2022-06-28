@@ -22,23 +22,28 @@ type
   Calib*[N: static[int], V: Volts] = object
     vref*: Volts
     bits*: int
+    factor*: float32
     channels*: array[N, ChConfig]
   
   VoltsCalib*[N: static[int]] = Calib[N, Volts]
 
 proc initVoltsCalib*[N: static[int]](
     vref: Volts,
+    bits: range[0..64],
+    bipolar: bool,
     gains: array[N, float32]
 ): VoltsCalib[N] =
   result.vref = vref
+  result.bits = if bipolar: 2^(bits-1) else: 2^(bits)
+  result.factor = vref.float32 / bits.float32
   for i in 0 ..< N:
     result.channels[i].gain = gains[i]
 
 proc convert*[N, T, V](val: T, calib: Calib[N, V], ch: ChConfig): V =
   when distinctBase(T) is SomeSignedInt:
-    result = Volts( calib.vref.float32 / ch.gain / float32(2^(calib.bits-1)) )
+    result = Volts(calib.factor.float32 / ch.gain)
   else:
-    result = Volts( calib.vref.float32 / ch.gain / 2^(calib.bits) )
+    result = Volts(calib.factor.float32 / ch.gain)
 
 proc convert*[N, T](reading: AdcReading[N, T], calib: VoltsCalib, idx: int): Volts =
   result = reading.channels[idx].convert(calib, calib.channels[idx])

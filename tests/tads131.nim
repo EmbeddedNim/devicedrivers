@@ -56,6 +56,8 @@ suite "bit ops":
   test "test toVolts":
     var calib = initVoltsCalib[4](
       vref = 4.Volts,
+      bits = 24,
+      bipolar = true,
       gains = [2.0'f32, 2.0, 2.0, 2.0]
     )
 
