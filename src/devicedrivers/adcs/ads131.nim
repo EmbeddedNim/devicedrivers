@@ -279,15 +279,6 @@ proc readChannelsRawToSeq*(
   self.readChannelsRaw(result, self.maxChannelCount)
 
 proc readChannels*[N](
-    self: Ads131Driver[N];
-    reading: var AdcReading[N, Bits32],
-    channelCount: int
-) {.raises: [OSError].} =
-  ## primary api for reading from adc with manual channel count
-  assert channelCount <= N
-  self.readChannelsRaw(reading.channels, channelCount)
-
-proc readChannels*[N](
     self: Ads131Driver[N],
     reading: var AdcReading[N, Bits32]
 ) {.raises: [OSError].} =
