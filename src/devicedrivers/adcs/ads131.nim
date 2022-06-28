@@ -71,6 +71,14 @@ type
     GPIO = 0x14
 
 type
+  RevId* {.pure.} = enum
+    ADS131E0x = 0b110
+
+  ChNum* {.pure.} = enum
+    E04 = 0b00
+    E06 = 0b01
+    E08 = 0b10
+
   ChGain* {.pure.} = enum
     X1 = 0b001
     X2 = 0b010
@@ -97,8 +105,13 @@ type
                       # MuxDNU = 0b110 # Do not use
                       # MuxDNU = 0b111 # Do not use
 
+bitfields ControlRegister(uint8):
+  ## ID ControlRegister adc register
+  revId: RevId[7..5]
+  numChannels: ChNum[1..0]
+
 bitfields RegConfig1(uint8):
-  ## define RegConfig integer with accessors for `bitfields`
+  ## Config1 adc register
   daisyIn: bool[6..6]
   clkEn: bool[5..5]
   dataRate: DataRate[2..0]
