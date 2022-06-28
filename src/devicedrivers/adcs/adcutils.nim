@@ -5,29 +5,21 @@ import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
 
-
-type
-  AdcReading*[N: static[int], T] = object
-    ts*: MonoTime
-    count*: int
-    channels*: array[N, T]
-
-  ChConfig* = object
-    gain*: float32
-
-  Calib*[N: static[int], V: Volts] = object
-    vref*: Volts
-    bitspace*: int64
-    factor*: float32
-    channels*: array[N, ChConfig]
-  
-  VoltsCalib*[N: static[int]] = Calib[N, Volts]
-
-# AdcReading Procs
+# AdcReading
 # ~~~~~~~~~~~~~~~~ 
 # 
 # this section makes `AdcReading` behave like a sequence. 
 # so you and directly do `reading[1]` and `reading.setLen(3)`
+
+
+type
+  AdcReading*[N: static[int], T] = object
+    # generic adc reading object 
+    # - `N` is the max readings for the ADC 
+    # - `T` is the basic reading type, e.g. int32 or float32 
+    ts*: MonoTime
+    count*: int
+    channels*: array[N, T]
 
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
   ## helper for setting adc channel readings
@@ -60,12 +52,28 @@ proc `clear`*[N, T](reading: var AdcReading[N, T]) =
 # this section is the initial *volts calibration* for an adc
 #
 
+type
+  ChConfig* = object
+    # per channel config for a calibration setup
+    gain*: float32
+
+  Calib*[N: static[int], T] = object
+    # fully generic calibration 
+    vref*: Volts
+    bitspace*: int64
+    factor*: float32
+    channels*: array[N, ChConfig]
+  
+  VoltsCalib*[N: static[int]] = Calib[N, Volts] #\
+    # an Adc-to-Volts calibration for an AdcReading of N channels
+
 proc initVoltsCalib*[N: static[int]](
     vref: Volts,
     bits: range[0..64],
     bipolar: bool,
     gains: array[N, float32]
 ): VoltsCalib[N] =
+  ## properly create a volts calibration
   result.vref = vref
   result.bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   result.factor = vref.float32 / result.bitspace.float32
@@ -84,6 +92,8 @@ proc toVolts*[N, T, C](
     calib: C,
     reading: AdcReading[N, T],
 ): AdcReading[N, Volts] =
+  # returns a new AdcReading converted to volts. The reading type is `Volts`
+  # which are a float32.
   result.ts = reading.ts
   result.count = reading.count
   for i in 0 ..< reading.count:
