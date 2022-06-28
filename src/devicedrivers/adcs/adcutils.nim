@@ -13,7 +13,7 @@ const
 type
   AdcReading*[N: static[int], T] = object
     ts*: Micros
-    channel_count*: int
+    count*: int
     channels*: array[N, T]
 
 # ===============================

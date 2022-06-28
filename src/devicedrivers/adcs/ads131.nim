@@ -252,13 +252,16 @@ proc readChannelsRaw*(
   logDebug("readChannels: ready done ")
   self.tx_buf[0] = RDATA.uint8
   var spi_ret = self.execSpi(1, 27)
-  for i in countup(0, sampleCnt):
+
+  logDebug("readChannels: spi done ")
+  self.tx_buf[0] = RDATA.uint8
+  for i in 0 ..< sampleCnt:
     var reading: int32
     reading = joinBytes32[int32](spi_ret[(i+1)*3..(i+1)*3+2], count = 3)
     reading = (reading shl 8) shr 8 # Sign extension
     data[i] = reading.Bits32
 
-proc readChannelsRaw*(
+proc readChannelsRawToSeq*(
     self: Ads131Driver,
     count: SampleRng
 ): seq[Bits32] {.raises: [OSError].} =
@@ -266,7 +269,7 @@ proc readChannelsRaw*(
   result = newSeq[Bits32](count)
   self.readChannelsRaw(result, count)
 
-proc readChannelsRaw*(
+proc readChannelsRawToSeq*(
     self: Ads131Driver
 ): seq[Bits32] {.raises: [OSError].} =
   ## read raw channels
@@ -281,7 +284,7 @@ proc readChannels*[N](
   ## primary api for reading from adc with manual channel count
   assert channelCount <= N
   self.readChannelsRaw(reading.channels, channelCount)
-  reading.channel_count = channelCount
+  reading.count = channelCount
 
 proc readChannels*[N](
     self: Ads131Driver[N],
@@ -289,6 +292,7 @@ proc readChannels*[N](
 ) {.raises: [OSError].} =
   ## primary api for reading from adc
   self.readChannelsRaw(reading.channels, N)
+  reading.count = N
 
 proc avgReading*[N](self: Ads131Driver[N], avgCount: int): seq[float32] =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)

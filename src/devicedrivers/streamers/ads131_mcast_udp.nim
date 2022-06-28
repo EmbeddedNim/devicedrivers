@@ -220,7 +220,7 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     
     for reading in batch:
-      for i in 0..<reading.channel_count:
+      for i in 0..<reading.count:
         let tsr = timeSenML(reading.ts - ts)
 
         # voltage channels
