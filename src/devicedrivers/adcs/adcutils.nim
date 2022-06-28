@@ -73,21 +73,24 @@ type
   Calib*[N: static[int], F, V] = array[N, F]
 
 
-proc convert*[T, V](res: var V, val: T, ch: OneFactorConv): V =
+proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor)
 
-proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv): V =
+proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor + ch.calOffset)
 
 proc convert*[N, T, F, V](
-    reading: AdcReading[N, T],
     calib: Calib[N, F, V],
-    idx: int
-): V =
-  # convert each channel
-  result.convert(reading.channels[idx], calib[idx])
+    reading: AdcReading[N, T],
+): AdcReading[N, V] =
+  # returns a new AdcReading converted to volts. The reading type is `Volts`
+  # which are a float32.
+  result.ts = reading.ts
+  result.count = reading.count
+  for i in 0 ..< reading.count:
+    result[i].convert(reading[i], calib[i])
 
 proc combine*[N, T, F, G, V](
     a: Calib[N, F, T],
@@ -119,17 +122,6 @@ proc initVoltsCalib*[N: static[int]](
   let factor = vref.float32 / bitspace.float32
   for i in 0 ..< N:
     result[i].calFactor = factor / gains[i]
-
-proc convert*[N, T, F, V](
-    calib: Calib[N, F, V],
-    reading: AdcReading[N, T],
-): AdcReading[N, V] =
-  # returns a new AdcReading converted to volts. The reading type is `Volts`
-  # which are a float32.
-  result.ts = reading.ts
-  result.count = reading.count
-  for i in 0 ..< reading.count:
-    result.channels[i] = reading.convert(calib, i)
 
 # ===============================
 # TODO: remove or refactor
