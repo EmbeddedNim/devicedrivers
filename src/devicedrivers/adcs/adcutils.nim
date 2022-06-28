@@ -77,8 +77,8 @@ proc convert*[N, T, V](reading: AdcReading[N, T], calib: Calib[N, V], idx: int):
   result = reading.channels[idx].convert(calib, calib.channels[idx])
 
 proc toVolts*[N, T, C](
-    reading: AdcReading[N, T],
     calib: C,
+    reading: AdcReading[N, T],
 ): AdcReading[N, Volts] =
   result.ts = reading.ts
   result.count = reading.count

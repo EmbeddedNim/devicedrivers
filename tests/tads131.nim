@@ -70,7 +70,7 @@ suite "bit ops":
 
     echo "reading: ", repr(reading)
 
-    let vreading: AdcReading[4, Volts] = reading.toVolts(calib)
+    let vreading: AdcReading[4, Volts] = calib.toVolts(reading)
     echo "vreading: ", repr(vreading)
     unittest.check abs(vreading[0].float32 - 0.0000476837158203125'f32) <= 1.0e-5
     unittest.check abs(vreading[1].float32 - 0.0002384185791015625'f32) <= 1.0e-5
