@@ -5,11 +5,6 @@ import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
 
-const
-  Vref = 4.0'f32
-  Bitspace24: int = 2^23
-
-
 type
   AdcReading*[N: static[int], T] = object
     ts*: Micros
@@ -23,7 +18,6 @@ type
     vref*: Volts
     bitspace*: int64
     factor*: float32
-    signextend*: bool
     channels*: array[N, ChConfig]
   
   VoltsCalib*[N: static[int]] = Calib[N, Volts]
@@ -89,8 +83,13 @@ proc toVolts*[N, T, C](
 
 
 # ===============================
-# TODO: move to a better spot
-# 
+# TODO: remove or refactor
+# ===============================
+
+const
+  Vref = 4.0'f32
+  Bitspace24: int = 2^23
+
 template toVoltageDivider*[T](chval: T,
                      gain: static[float32],
                      r1: static[float32] = 99.8,
