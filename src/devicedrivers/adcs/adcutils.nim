@@ -23,9 +23,11 @@ type
   
   VoltsCalib*[N: static[int]] = Calib[N, Volts]
 
-# ============================================ #
 # AdcReading Procs
-# ============================================ #
+# ~~~~~~~~~~~~~~~~ 
+# 
+# this section makes `AdcReading` behave like a sequence. 
+# so you and directly do `reading[1]` and `reading.setLen(3)`
 
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
   ## helper for setting adc channel readings
