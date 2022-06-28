@@ -198,10 +198,11 @@ proc execSpi(self: Ads131Driver, tx_data_len, rx_data_len: static[int]): seq[uin
     tx_bufs = @[spi_buf(buf: addr self.tx_buf[0], len: csize_t(sizeof(uint8) * (
         tx_data_len+rx_data_len)))]
     tx_bset = spi_buf_set(buffers: addr(tx_bufs[0]), count: tx_bufs.len().csize_t)
+
   check: spi_transceive(self.spi_dev, addr self.spi_cfg, addr tx_bset, addr rx_bset)
   result = self.rx_buf[tx_data_len..(tx_data_len+rx_data_len)].toSeq()
 
-proc readReg*(self: Ads131Driver, reg: REG): uint8 =
+proc readReg(self: Ads131Driver, reg: REG): uint8 {.used.} =
   self.rx_buf[2] = 0x00
   self.tx_buf[0] = cast[uint8](RREG) or cast[uint8](reg)
   self.tx_buf[1] = 0x00
@@ -210,13 +211,13 @@ proc readReg*(self: Ads131Driver, reg: REG): uint8 =
   var spi_ret = self.execSpi(2, 1)
   result = spi_ret[0]
 
-proc writeReg*(self: Ads131Driver, reg: REG, value: uint8) =
+proc writeReg(self: Ads131Driver, reg: REG, value: uint8) {.used.} =
   self.tx_buf[0] = WREG.uint8 or reg.uint8
   self.tx_buf[1] = 0x00
   self.tx_buf[2] = value
   discard self.execSpi(3, 0)
 
-proc sendCmd*(self: Ads131Driver, cmd: CMD) =
+proc sendCmd(self: Ads131Driver, cmd: CMD) {.used.} =
   self.tx_buf[0] = cast[uint8](cmd)
   discard self.execSpi(1, 0)
 
