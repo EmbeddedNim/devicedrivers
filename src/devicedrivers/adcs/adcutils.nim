@@ -23,6 +23,7 @@ type
     vref*: Volts
     bitspace*: int64
     factor*: float32
+    signextend*: bool
     channels*: array[N, ChConfig]
   
   VoltsCalib*[N: static[int]] = Calib[N, Volts]
@@ -34,11 +35,14 @@ type
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
   ## helper for setting adc channel readings
   reading.channels[idx] = val
-  # reading.count = max(reading.count, idx)
 
+proc `[]`*[N, T](reading: var AdcReading[N, T], idx: int): var T =
+  ## helper for setting adc channel readings
+  result = reading.channels[idx]
 proc `[]`*[N, T](reading: AdcReading[N, T], idx: int): T =
   ## helper for setting adc channel readings
   result = reading.channels[idx]
+
 
 proc `setLen`*[N, T](reading: var AdcReading[N, T], idx: int) =
   ## helper for setting adc channel count
@@ -60,7 +64,7 @@ proc initVoltsCalib*[N: static[int]](
     gains: array[N, float32]
 ): VoltsCalib[N] =
   result.vref = vref
-  result.bitspace = if bipolar: 2^(bits-1) else: 2^(bits)
+  result.bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   result.factor = vref.float32 / result.bitspace.float32
   for i in 0 ..< N:
     result.channels[i].gain = gains[i]

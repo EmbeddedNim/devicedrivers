@@ -65,11 +65,14 @@ suite "bit ops":
     reading.count = 4
     reading.channels[0] = 100.Bits24
     reading.channels[1] = 500.Bits24
-    reading.channels[2] = 0.Bits24
-    reading.channels[3] = -100.Bits24
+    reading.channels[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
+    reading.channels[3].setSigned = 0x800000 # ads131 min FS 24-bit code
 
     echo "reading: ", repr(reading)
 
     let vreading: AdcReading[4, Volts] = reading.toVolts(calib)
     echo "vreading: ", repr(vreading)
     unittest.check abs(vreading[0].float32 - 0.0000476837158203125'f32) <= 1.0e-5
+    unittest.check abs(vreading[1].float32 - 0.0002384185791015625'f32) <= 1.0e-5
+    unittest.check abs(vreading[2].float32 - 4.0'f32) <= 1.0e-5
+    unittest.check abs(vreading[3].float32 - -4.0'f32) <= 1.0e-5
