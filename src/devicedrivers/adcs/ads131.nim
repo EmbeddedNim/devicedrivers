@@ -283,7 +283,7 @@ proc readChannels*[N](
     reading: var AdcReading[N, Bits32]
 ) {.raises: [OSError].} =
   ## primary api for reading from adc
-  self.readChannelsRaw(reading.channels, N)
+  self.readChannelsRaw(reading)
 
 proc avgReading*[N](self: Ads131Driver[N], avgCount: int): seq[float32] =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)
