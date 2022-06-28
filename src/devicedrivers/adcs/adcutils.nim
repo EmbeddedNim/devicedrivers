@@ -16,6 +16,43 @@ type
     count*: int
     channels*: array[N, T]
 
+  ChConfig* = object
+    gain*: float32
+
+  Calib*[N: static[int], V: Volts] = object
+    vref*: Volts
+    bits*: int
+    channels*: array[N, ChConfig]
+  
+  VoltsCalib*[N: static[int]] = Calib[N, Volts]
+
+proc initVoltsCalib*[N: static[int]](
+    vref: Volts,
+    gains: array[N, float32]
+): VoltsCalib[N] =
+  result.vref = vref
+  for i in 0 ..< N:
+    result.channels[i].gain = gains[i]
+
+proc convert*[N, T, V](val: T, calib: Calib[N, V], ch: ChConfig): V =
+  when distinctBase(T) is SomeSignedInt:
+    result = Volts( calib.vref.float32 / ch.gain / float32(2^(calib.bits-1)) )
+  else:
+    result = Volts( calib.vref.float32 / ch.gain / 2^(calib.bits) )
+
+proc convert*[N, T](reading: AdcReading[N, T], calib: VoltsCalib, idx: int): Volts =
+  result = reading.channels[idx].convert(calib, calib.channels[idx])
+
+proc toVolts*[N, T, C](
+    reading: AdcReading[N, T],
+    calib: C,
+): AdcReading[N, Volts] =
+  result.ts = reading.ts
+  result.count = reading.count
+  for i in 0 ..< reading.count:
+    result.channels[i] = reading.convert(calib, i)
+
+
 # ===============================
 # TODO: move to a better spot
 # 

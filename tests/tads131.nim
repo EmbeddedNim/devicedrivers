@@ -2,8 +2,10 @@ import unittest except check
 import strutils
 import bitops
 import print
+import typetraits
 
 import mcu_utils/basics
+import mcu_utils/basictypes
 
 include devicedrivers/adcs/ads131
 
@@ -50,3 +52,20 @@ suite "bit ops":
     print gn
     unittest.check gn == ChGain.X12
     unittest.check regChSet1.uint8 == 0x60
+
+  test "test toVolts":
+    var calib = initVoltsCalib[4](
+      vref = 4.Volts,
+      gains = [2.0'f32, 2.0, 2.0, 2.0]
+    )
+
+    var reading: AdcReading[4, Bits24]
+    reading.channels[0] = 100.Bits24
+    reading.channels[1] = 500.Bits24
+    reading.channels[2] = 0.Bits24
+    reading.channels[3] = -100.Bits24
+
+    echo "reading: ", repr(reading)
+
+    let vreading = reading.toVolts(calib)
+    echo "vreading: ", repr(vreading)
