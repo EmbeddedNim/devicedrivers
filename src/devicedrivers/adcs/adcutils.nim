@@ -54,9 +54,11 @@ proc `clear`*[N, T](reading: var AdcReading[N, T]) =
   reading.count = 0
 
 
-# ============================================ #
 # AdcReading Calibration Utils
-# ============================================ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 
+# this section is the initial *volts calibration* for an adc
+#
 
 proc initVoltsCalib*[N: static[int]](
     vref: Volts,
