@@ -77,6 +77,14 @@ proc convert*[N, T, V](
   # convert each channel
   result = reading.channels[idx].convert(calib.channels[idx])
 
+proc combine*[N, T, V](
+    a: Calib[N, T],
+    b: Calib[N, V],
+    idx: int
+): Calib[N, V] =
+  # combine calibs??
+  discard
+
 # AdcReading Voltage Calibration
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # 
@@ -100,7 +108,7 @@ proc initVoltsCalib*[N: static[int]](
   for i in 0 ..< N:
     result.channels[i].calFactor = result.factor / gains[i]
 
-proc toVolts*[V: Volts, N, T](
+proc convert*[V: Volts, N, T](
     calib: Calib[N, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
@@ -110,7 +118,6 @@ proc toVolts*[V: Volts, N, T](
   result.count = reading.count
   for i in 0 ..< reading.count:
     result.channels[i] = reading.convert(calib, i)
-
 
 # ===============================
 # TODO: remove or refactor
