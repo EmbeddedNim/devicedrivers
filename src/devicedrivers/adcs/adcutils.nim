@@ -8,8 +8,9 @@ import mcu_utils/logging
 # AdcReading
 # ~~~~~~~~~~~~~~~~ 
 # 
-# this section makes `AdcReading` behave like a sequence. 
-# so you and directly do `reading[1]` and `reading.setLen(3)`
+# this section makes `AdcReading` behave like a container. 
+# so you can directly do `reading[1]` and `reading.setLen(3)`
+# 
 
 
 type
