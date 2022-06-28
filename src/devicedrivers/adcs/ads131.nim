@@ -86,6 +86,16 @@ type
     Dr4k  = 0b100
     Dr2k  = 0b101
     Dr1k  = 0b111
+
+  ChMux* {.pure.} = enum
+    MuxNormal = 0b000 # Normal input
+    MuxShorted = 0b001 # Input shorted to (AVDD + AVSS) / 2 (for offset or noise measurements)
+    # MuxDNU = 0b010 # Do not use
+    MuxMVDD = 0b011 # MVDD for supply measurement
+    MuxTemp = 0b100 # Temperature sensor
+    MuxTest = 0b101 # Test signal
+    # MuxDNU = 0b110 # Do not use
+    # MuxDNU = 0b111 # Do not use
   
 bitfields RegConfig1(uint8):
   ## define RegConfig integer with accessors for `bitfields`
@@ -95,7 +105,7 @@ bitfields RegConfig1(uint8):
 
 bitfields RegChSet(uint8):
   gain: ChGain[6..4]
-  mux: bool[0..2]
+  mux: ChMux[2..0]
 
 type
   RegChN* = object
