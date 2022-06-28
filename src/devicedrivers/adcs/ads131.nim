@@ -286,7 +286,9 @@ proc readChannels*[N](
   ## primary api for reading from adc
   self.readChannelsRaw(reading)
 
-proc avgReading*[N](self: Ads131Driver[N], avgCount: int): seq[float32] =
+proc avgReading*[N](self: Ads131Driver[N],
+                    avgCount: int
+                   ): seq[float32] {.deprecated.} =
   logDebug("taking averaged ads131 readings", "avgCount:", avgCount)
 
   # take readings
