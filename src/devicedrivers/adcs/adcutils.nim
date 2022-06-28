@@ -63,13 +63,12 @@ proc initVoltsCalib*[N: static[int]](
   for i in 0 ..< N:
     result.channels[i].gain = gains[i]
 
-import strformat
-
-proc convert*[N, T, V](val: T, calib: Calib[N, V], ch: ChConfig): V =
-  echo fmt"convert: {val.repr=} {calib.repr=} {ch.repr=}"
+proc convert*[N, T](val: T, calib: VoltsCalib[N], ch: ChConfig): Volts =
+  # convert to volts
   result = Volts(val.float32 / ch.gain * calib.factor.float32)
 
-proc convert*[N, T](reading: AdcReading[N, T], calib: VoltsCalib, idx: int): Volts =
+proc convert*[N, T, V](reading: AdcReading[N, T], calib: Calib[N, V], idx: int): V =
+  # convert each channel
   result = reading.channels[idx].convert(calib, calib.channels[idx])
 
 proc toVolts*[N, T, C](
