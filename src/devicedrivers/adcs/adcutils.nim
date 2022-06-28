@@ -65,6 +65,25 @@ type
     factor*: float32
     channels*: array[N, ChConfig]
   
+proc convert*[T](val: T, ch: ChConfig): Volts =
+  # convert to volts
+  result = Volts(val.float32 * ch.calFactor)
+
+proc convert*[N, T, V](
+    reading: AdcReading[N, T],
+    calib: Calib[N, V],
+    idx: int
+): V =
+  # convert each channel
+  result = reading.channels[idx].convert(calib.channels[idx])
+
+# AdcReading Voltage Calibration
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 
+# helpers for AdcReading's 
+#
+
+type
   VoltsCalib*[N: static[int]] = Calib[N, Volts] #\
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
@@ -80,18 +99,6 @@ proc initVoltsCalib*[N: static[int]](
   result.factor = vref.float32 / result.bitspace.float32
   for i in 0 ..< N:
     result.channels[i].calFactor = result.factor / gains[i]
-
-proc convert*[T](val: T, ch: ChConfig): Volts =
-  # convert to volts
-  result = Volts(val.float32 * ch.calFactor)
-
-proc convert*[N, T, V](
-    reading: AdcReading[N, T],
-    calib: Calib[N, V],
-    idx: int
-): V =
-  # convert each channel
-  result = reading.channels[idx].convert(calib.channels[idx])
 
 proc toVolts*[V: Volts, N, T](
     calib: Calib[N, V],
