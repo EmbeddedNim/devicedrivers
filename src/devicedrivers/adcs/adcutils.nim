@@ -1,4 +1,4 @@
-import std/[typetraits, math, times, monotimes]
+import std/[sequtils, typetraits, math, times, monotimes]
 
 import mcu_utils/basics
 import mcu_utils/basictypes
@@ -25,11 +25,9 @@ type
 proc `$`*(reading: AdcReading): string =
   var ts = Micros(convert(Nanoseconds, Microseconds, reading.ts.ticks))
   result &= "AdcReading("
-  result &= "ts: " & repr(ts)
-  result &= ",chans:["
-  for ch in reading.channels:
-    result &= repr(ch)
-    result &= ","
+  result &= "ts:" & repr(ts)
+  result &= ", chans:["
+  result &= reading.channels.mapIt(it.repr).join(", ")
   result &= "])"
 
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =

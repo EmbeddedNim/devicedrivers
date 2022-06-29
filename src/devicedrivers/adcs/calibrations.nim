@@ -92,6 +92,24 @@ proc initVoltsCalib*[N: static[int]](
   for i in 0 ..< N:
     result[i].calFactor = factor / gains[i]
 
+# AdcReading Current Calibration
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# 
+# helpers for AdcReading's 
+#
+
+type
+  CurrentSenseCalib*[N: static[int]] = Calibs[N, OneFactorConv, Amps]
+
+    # an Adc-to-Volts calibration for an AdcReading of N channels
+
+proc initCurrentSenseCalib*[N: static[int]](
+    resistors: array[N, float32],
+): CurrentSenseCalib[N] =
+  ## properly create a volts calibration
+  for i in 0 ..< N:
+    result[i].calFactor = 1.0'f32 / resistors[i]
+
 
 # Voltage to End Units conversion
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
