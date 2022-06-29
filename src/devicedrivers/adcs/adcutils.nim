@@ -15,9 +15,9 @@ import mcu_utils/logging
 
 type
   AdcReading*[N: static[int], T] = object
-    # generic adc reading object 
-    # - `N` is the max readings for the ADC 
-    # - `T` is the basic reading type, e.g. int32 or float32 
+    ## Generic adc reading object 
+    ## - `N` is the max readings for the ADC, must be a compile time int
+    ## - `T` is the basic reading type, e.g. int32 or float32 
     ts*: MonoTime
     count*: int
     channels*: array[N, T]
