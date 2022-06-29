@@ -1,16 +1,19 @@
+## =============
+## ADC Utilities
+## =============
+## 
+## This module contains generic types and functions to 
+## represent and work with readings from ADCs. It provides
+## a core generic `AdcReading` type. The number of channels
+## and the storage types can be configured to match an ADC.  
+## 
+
 import std/[sequtils, typetraits, math, times, monotimes]
 
 import mcu_utils/basics
 import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
-
-# AdcReading
-# ~~~~~~~~~~~~~~~~ 
-# 
-# this section makes `AdcReading` behave like a container. 
-# so you can directly do `reading[1]` and `reading.setLen(3)`
-# 
 
 
 type
