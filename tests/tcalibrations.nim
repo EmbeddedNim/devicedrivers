@@ -28,10 +28,35 @@ suite "calibrations ":
 
     let vreading = calibs.convert(reading)
     echo "vreading: ", repr(vreading)
-    echo "vreading:float32:", $(vreading[0].float32)
     unittest.check abs(vreading[0].float32 - 100 * 1.0e-1) <= 1.0e-5
     unittest.check abs(vreading[1].float32 - 200 * 1.0e-2) <= 1.0e-5
     unittest.check abs(vreading[2].float32 - 300 * 1.0e-3) <= 1.0e-5
+
+  test "test multi convs":
+    var voltCals: Calibs[2, OneFactorConv, Volts]
+    voltCals[0].calFactor = 1.0e-1
+    voltCals[1].calFactor = 1.0e-2
+
+    var currCals: Calibs[2, TwoFactorConv, Volts]
+    currCals[0] = TwoFactorConv(calFactor: 1.0e-3, calOffset: -0.004)
+    currCals[1] = TwoFactorConv(calFactor: 1.0e-3, calOffset: -0.004)
+
+    var reading: AdcReading[2, Bits24]
+    reading[0] = 100.Bits24
+    reading[1] = 200.Bits24
+
+    let
+      vreading = voltCals.convert(reading)
+      areading = currCals.convert(vreading)
+
+    echo "vreading: ", $(vreading)
+    echo "areading: ", $(areading)
+
+    unittest.check vreading[0].float32 ~= 10.0
+    unittest.check vreading[1].float32 ~= 2.0
+
+    unittest.check areading[0].float32 ~= 100 * 1.0e-1
+    unittest.check areading[1].float32 ~= 200 * 1.0e-2
 
   test "test toVolts":
     var calib = initVoltsCalib[4](
@@ -52,8 +77,7 @@ suite "calibrations ":
 
     let vreading: AdcReading[4, Volts] = calib.convert(reading)
     echo "vreading: ", repr(vreading)
-    echo "vreading:float32:", $(vreading[0].float32)
-    unittest.check abs(vreading[0].float32 - 0.0000476837158203125'f32) <= 1.0e-5
-    unittest.check abs(vreading[1].float32 - 0.0002384185791015625'f32) <= 1.0e-5
-    unittest.check abs(vreading[2].float32 - 4.0'f32) <= 1.0e-5
-    unittest.check abs(vreading[3].float32 - -4.0'f32) <= 1.0e-5
+    unittest.check vreading[0].float32 ~= 0.0000476837158203125'f32
+    unittest.check vreading[1].float32 ~= 0.0002384185791015625'f32
+    unittest.check vreading[2].float32 ~= 4.0'f32
+    unittest.check vreading[3].float32 ~= -4.0'f32

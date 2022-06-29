@@ -1,4 +1,4 @@
-import std/[typetraits, math, monotimes]
+import std/[typetraits, math, times, monotimes]
 
 import mcu_utils/basics
 import mcu_utils/basictypes
@@ -21,6 +21,16 @@ type
     ts*: MonoTime
     count*: int
     channels*: array[N, T]
+
+proc `$`*(reading: AdcReading): string =
+  var ts = Micros(convert(Nanoseconds, Microseconds, reading.ts.ticks))
+  result &= "AdcReading("
+  result &= "ts: " & repr(ts)
+  result &= ",chans:["
+  for ch in reading.channels:
+    result &= repr(ch)
+    result &= ","
+  result &= "])"
 
 proc `[]=`*[N, T](reading: var AdcReading[N, T], idx: int, val: T) =
   ## helper for setting adc channel readings
