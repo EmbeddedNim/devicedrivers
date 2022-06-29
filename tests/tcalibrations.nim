@@ -84,3 +84,13 @@ suite "calibrations ":
     unittest.check vreading[1].float32 ~= 0.0002384185791015625'f32
     unittest.check vreading[2].float32 ~= 4.0'f32
     unittest.check vreading[3].float32 ~= -4.0'f32
+
+  test "test generic kinds":
+
+    var calib = initGenericReadingCalibs[3](
+      conversions = [
+        GenericConv(kind: OneFactor, onefact: OneFactorConv(calFactor: 3.14)),
+        GenericConv(kind: OneFactor, onefact: OneFactorConv(calFactor: 3.14)),
+        GenericConv(kind: OneFactor, onefact: OneFactorConv(calFactor: 3.14)),
+      ]
+    )

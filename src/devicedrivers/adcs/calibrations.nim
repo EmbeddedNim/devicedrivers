@@ -2,6 +2,7 @@ import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
 import adcutils
+import patty
 
 import math
 import adcutils
@@ -18,6 +19,8 @@ import adcutils
 # - `G` calibration factors array
 
 type
+  Converter* = object of RootObj
+
   OneFactorConv* = object
     # per channel config for a calibration setup
     calFactor*: float32
@@ -119,20 +122,45 @@ proc initCurrentSenseCalib*[N: static[int]](
 
 type
 
-  UnitKind* = distinct uint16
+  ReadingKind* = distinct uint16
 
-  UnitsCalib*[N: static[int], G, V] = Calibs[N, G, V] #\
-    # an Adc-to-Volts calibration for an AdcReading of N channels
+  SomeReading* = object
+    val*: float32
+    unit*: ReadingKind
 
-proc initUnitsCalib*[N: static[int]](
-    vref: Volts,
-    bits: range[0..64],
-    bipolar: bool,
-    gains: array[N, float32]
-): VoltsCalib[N] =
+  ClosureConverter = proc (val: float32): float32 {.closure.}
+
+type
+  ConverterKinds* {.pure.} = enum
+    OneFactor
+    TwoFactor
+    PolyThreeFactor
+    ClosureConv
+
+  GenericConv* = object
+    case kind*: ConverterKinds
+    of OneFactor:
+      onefact*: OneFactorConv
+    of TwoFactor:
+      twofact*: TwoFactorConv
+    of PolyThreeFactor:
+      threefact*: TwoFactorConv
+    of ClosureConv:
+      fnconv*: ClosureConverter
+
+  GenericUnitsCalib*[N: static[int]] = Calibs[N, GenericConv, SomeReading]
+
+
+proc initGenericReadingCalibs*[N: static[int]](
+  conversions: array[N, GenericConv]
+): GenericUnitsCalib[N] =
   ## properly create a volts calibration
-  result.vref = vref
-  result.bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
-  result.factor = vref.float32 / result.bitspace.float32
   for i in 0 ..< N:
-    result.channels[i].calFactor = result.factor / gains[i]
+    result[i] = conversions[i]
+
+type
+  ResistorDividerConv* = distinct TwoFactorConv
+
+# proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
+#   # convert to volts
+#   res = V(val.float32 * ch.calFactor)
