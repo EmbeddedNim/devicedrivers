@@ -137,7 +137,6 @@ proc initAdcVoltsCalib*[N: static[int]](
 type
   CurrentSenseCalib*[N: static[int]] = Calibs[N, ScaleConv, Amps]
 
-    # an Adc-to-Volts calibration for an AdcReading of N channels
 
 proc initCurrentSenseCalib*[N: static[int]](
     resistors: array[N, float32],
