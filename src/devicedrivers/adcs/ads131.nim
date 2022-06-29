@@ -11,8 +11,8 @@ import mcu_utils/logging
 import nephyr/zephyr/[zdevicetree, drivers/zspi]
 import nephyr/[utils, drivers/gpio]
 
-import adcutils
-export adcutils
+import adcutils, calibrations
+export adcutils, calibrations
 
 const
   SPI_DATA_BYTES = 64
