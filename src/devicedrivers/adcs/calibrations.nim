@@ -19,13 +19,13 @@ import adcutils
 # - `G` calibration factors array
 
 type
-  Converter* = object of RootObj
+  Converter* = ref object of RootObj
 
-  OneFactorConv* = object
+  OneFactorConv* = ref object of Converter
     # per channel config for a calibration setup
     calFactor*: float32
 
-  TwoFactorConv* = object
+  TwoFactorConv* = ref object of Converter
     # per channel config for a calibration setup
     calFactor*: float32
     calOffset*: float32
@@ -33,6 +33,9 @@ type
 
   Calibs*[N: static[int], G, V] = array[N, G]
 
+method convert(e: Converter, val: float32): int {.base.} =
+  # override this base method
+  raise newException(CatchableError, "Method without implementation override")
 
 proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
   # convert to volts
