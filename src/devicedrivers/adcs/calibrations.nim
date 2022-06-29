@@ -22,8 +22,6 @@ import adcutils
 # Calibration Basics
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type
-  Converter* = object of RootObj
-
   OneFactorConv* = object
     # per channel config for a calibration setup
     calFactor*: float32
