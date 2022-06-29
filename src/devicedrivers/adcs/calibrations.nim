@@ -61,7 +61,7 @@ proc convert*[N: static[int], T, G, V](
   for i in 0 ..< N:
     result[i].convert(reading[i], calibration[i])
 
-proc combine*[N, T, G1, G2, V](
+proc transpose*[N, T, G1, G2, V](
     a: Calibs[N, G1, T],
     b: Calibs[N, G2, V],
     idx: int
