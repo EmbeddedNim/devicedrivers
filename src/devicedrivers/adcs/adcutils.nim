@@ -80,7 +80,7 @@ proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor + ch.calOffset)
 
-proc convert*[N, T, G, V](
+proc convert*[N: static[int], T, G, V](
     calib: Calibs[N, G, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
@@ -88,7 +88,7 @@ proc convert*[N, T, G, V](
   # which are a float32.
   result.ts = reading.ts
   result.count = reading.count
-  for i in 0 ..< reading.count:
+  for i in 0 ..< N:
     result[i].convert(reading[i], calib[i])
 
 proc combine*[N, T, G1, G2, V](
