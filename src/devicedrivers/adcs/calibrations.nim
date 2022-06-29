@@ -40,15 +40,26 @@ proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
   res = V(val.float32 * ch.calFactor + ch.calOffset)
 
 proc convert*[N: static[int], T, G, V](
-    calib: Calibs[N, G, V],
+    calibration: Calibs[N, G, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
-  # returns a new AdcReading converted to volts. The reading type is `Volts`
-  # which are a float32.
+  # Creates a new AdcReading with channels converted using the calibration. 
+  # 
+  runnableExamples:
+    var calibration: Calibs[1, OneFactorConv, Volts]
+    calibration[0].calFactor = 1.0e-1
+
+    var reading: AdcReading[1, Bits24]
+    reading[0] = 100.Bits24
+
+    let vreading = calibs.convert(reading)
+    echo "vreading: ", repr(vreading)
+    assert abs(10'f32 - vreading[0].float32) <= 1.0e-5
+
   result.ts = reading.ts
   result.count = reading.count
   for i in 0 ..< N:
-    result[i].convert(reading[i], calib[i])
+    result[i].convert(reading[i], calibration[i])
 
 proc combine*[N, T, G1, G2, V](
     a: Calibs[N, G1, T],

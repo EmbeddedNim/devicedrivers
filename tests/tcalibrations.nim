@@ -22,9 +22,9 @@ suite "calibrations ":
 
     var reading: AdcReading[3, Bits24]
     reading.count = 4
-    reading.channels[0] = 100.Bits24
-    reading.channels[1] = 200.Bits24
-    reading.channels[2] = 300.Bits24
+    reading[0] = 100.Bits24
+    reading[1] = 200.Bits24
+    reading[2] = 300.Bits24
 
     let vreading = calibs.convert(reading)
     echo "vreading: ", repr(vreading)
@@ -43,10 +43,10 @@ suite "calibrations ":
 
     var reading: AdcReading[4, Bits24]
     reading.count = 4
-    reading.channels[0] = 100.Bits24
-    reading.channels[1] = 500.Bits24
-    reading.channels[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
-    reading.channels[3].setSigned = 0x800000 # ads131 min FS 24-bit code
+    reading[0] = 100.Bits24
+    reading[1] = 500.Bits24
+    reading[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
+    reading[3].setSigned = 0x800000 # ads131 min FS 24-bit code
 
     echo "reading: ", repr(reading)
 
