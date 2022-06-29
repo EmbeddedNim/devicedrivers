@@ -7,8 +7,8 @@ import patty
 import math
 import adcutils
 
-# AdcReading Calibration Utils
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Calibration Utils
+# ~~~~~~~~~~~~~~~~~
 # 
 # this section is the initial *volts calibration* for an adc
 #
@@ -18,6 +18,9 @@ import adcutils
 # - `V` actual reading type but implies outgoing type
 # - `G` calibration factors array
 
+
+# Calibration Basics
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type
   Converter* = object of RootObj
 
@@ -31,9 +34,6 @@ type
     calOffset*: float32
 
 
-  Calibs*[N: static[int], G, V] = array[N, G]
-
-
 proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor)
@@ -41,6 +41,13 @@ proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
 proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
   # convert to volts
   res = V(val.float32 * ch.calFactor + ch.calOffset)
+
+
+# AdcReading Single Type Calibration
+# ~~~~~~~~~~~~~~~~~~~~~~
+# 
+type
+  Calibs*[N: static[int], G, V] = array[N, G]
 
 proc convert*[N: static[int], T, G, V](
     calibration: Calibs[N, G, V],
@@ -94,6 +101,7 @@ proc initVoltsCalib*[N: static[int]](
   let factor = vref.float32 / bitspace.float32
   for i in 0 ..< N:
     result[i].calFactor = factor / gains[i]
+
 
 # AdcReading Current Calibration
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
