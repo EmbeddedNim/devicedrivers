@@ -53,21 +53,6 @@ suite "bit ops":
     unittest.check gn == ChGain.X12
     unittest.check regChSet1.uint8 == 0x60
 
-  test "test convert":
-    var calib = initVoltsCalib[4](
-      vref = 4.Volts,
-      bits = 24,
-      bipolar = true,
-      gains = [1.0'f32, 1.0, 1.0, 1.0]
-    )
-
-    var reading: AdcReading[4, Bits24]
-    reading.count = 4
-    reading.channels[0] = 100.Bits24
-    reading.channels[1] = 500.Bits24
-    reading.channels[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
-    reading.channels[3].setSigned = 0x800000 # ads131 min FS 24-bit code
-
   test "test toVolts":
     var calib = initVoltsCalib[4](
       vref = 4.Volts,
