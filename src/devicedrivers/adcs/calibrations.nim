@@ -22,23 +22,34 @@ import adcutils
 # Calibration Basics
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type
-  OneFactorConv* = object
+  ScaleConv* = object
     # per channel config for a calibration setup
-    calFactor*: float32
+    scale*: float32
 
-  TwoFactorConv* = object
+  LinearConv* = object
     # per channel config for a calibration setup
-    calFactor*: float32
-    calOffset*: float32
+    slope*: float32
+    offset*: float32
+
+  Poly3Conv* = object
+    # per channel config for a calibration setup
+    a0*: float32
+    a1*: float32
+    a2*: float32
 
 
-proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
+proc convert*[T, V](res: var V, val: T, ch: ScaleConv) =
   # convert to volts
-  res = V(val.float32 * ch.calFactor)
+  res = V(val.float32 * ch.scale)
 
-proc convert*[T, V](res: var V, val: T, ch: TwoFactorConv) =
+proc convert*[T, V](res: var V, val: T, ch: LinearConv) =
   # convert to volts
-  res = V(val.float32 * ch.calFactor + ch.calOffset)
+  res = V(val.float32 * ch.scale + ch.offset)
+
+proc convert*[T, V](res: var V, val: T, ch: Poly3Conv) =
+  # convert to volts
+  let v = val.float32
+  res = V(ch.a0 + ch.a1*v^1 + ch.a2*v^2)
 
 
 # AdcReading Single Type Calibration
@@ -54,7 +65,7 @@ proc convert*[N: static[int], T, G, V](
   # Creates a new AdcReading with channels converted using the calibration. 
   # 
   runnableExamples:
-    var calibration: Calibs[1, OneFactorConv, Volts]
+    var calibration: Calibs[1, ScaleConv, Volts]
     calibration[0].calFactor = 1.0e-1
 
     var reading: AdcReading[1, Bits24]
@@ -85,7 +96,7 @@ proc transpose*[N, T, G1, G2, V](
 
 type
   VoltsConv* = object
-  VoltsCalib*[N: static[int]] = Calibs[N, OneFactorConv, Volts]
+  VoltsCalib*[N: static[int]] = Calibs[N, ScaleConv, Volts]
 
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
@@ -99,7 +110,7 @@ proc initAdcVoltsCalib*[N: static[int]](
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   let factor = vref.float32 / bitspace.float32
   for i in 0 ..< N:
-    result[i].calFactor = factor / gains[i]
+    result[i].scale = factor / gains[i]
 
 
 # AdcReading Current Calibration
@@ -109,7 +120,7 @@ proc initAdcVoltsCalib*[N: static[int]](
 #
 
 type
-  CurrentSenseCalib*[N: static[int]] = Calibs[N, OneFactorConv, Amps]
+  CurrentSenseCalib*[N: static[int]] = Calibs[N, ScaleConv, Amps]
 
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
@@ -118,7 +129,7 @@ proc initCurrentSenseCalib*[N: static[int]](
 ): CurrentSenseCalib[N] =
   ## properly create a volts calibration
   for i in 0 ..< N:
-    result[i].calFactor = 1.0'f32 / resistors[i]
+    result[i].scale = 1.0'f32 / resistors[i]
 
 
 # Voltage to End Units conversion
@@ -132,28 +143,24 @@ type
   ReadingKind* = distinct uint16
 
   SomeReading* = object
-    val*: float32
     unit*: ReadingKind
+    val*: float32
 
-  ClosureConverter = proc (val: float32): float32 {.closure.}
 
 type
   ConverterKinds* {.pure.} = enum
-    OneFactor
-    TwoFactor
-    PolyThreeFactor
-    ClosureConv
+    Scale
+    Linear
+    Poly3
 
   GenericConv* = object
     case kind*: ConverterKinds
-    of OneFactor:
-      onefact*: OneFactorConv
-    of TwoFactor:
-      twofact*: TwoFactorConv
-    of PolyThreeFactor:
-      threefact*: TwoFactorConv
-    of ClosureConv:
-      fnconv*: ClosureConverter
+    of Scale:
+      onefact*: ScaleConv
+    of Linear:
+      twofact*: LinearConv
+    of Poly3:
+      threefact*: Poly3Conv
 
   GenericUnitsCalib*[N: static[int]] = Calibs[N, GenericConv, SomeReading]
 
@@ -166,8 +173,8 @@ proc initGenericReadingCalibs*[N: static[int]](
     result[i] = conversions[i]
 
 type
-  ResistorDividerConv* = distinct TwoFactorConv
+  ResistorDividerConv* = distinct ScaleConv
 
-# proc convert*[T, V](res: var V, val: T, ch: OneFactorConv) =
+# proc convert*[T, V](res: var V, val: T, ch: ScaleConv) =
 #   # convert to volts
 #   res = V(val.float32 * ch.calFactor)
