@@ -1,6 +1,7 @@
 ## ======================
 ## Adc Calibration Module
 ## ======================
+## 
 ## The calibration module implements a system for calibrating readings
 ## taken from an ADC. 
 ## 
