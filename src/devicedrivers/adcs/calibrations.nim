@@ -58,12 +58,37 @@ proc convert*[T, V](res: var V, val: T, ch: Poly3Conv) =
 type
   Calibs*[N: static[int], G, V] = array[N, G]
 
+  CalibTuple*[N: static[int], G: tuple] = G
+
 proc convert*[N: static[int], T, G, V](
     calibration: Calibs[N, G, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
   # Creates a new AdcReading with channels converted using the calibration. 
   # 
+  runnableExamples:
+    var calibration: Calibs[1, ScaleConv, Volts]
+    calibration[0].calFactor = 1.0e-1
+
+    var reading: AdcReading[1, Bits24]
+    reading[0] = 100.Bits24
+
+    let vreading = calibs.convert(reading)
+    echo "vreading: ", repr(vreading)
+    assert abs(10'f32 - vreading[0].float32) <= 1.0e-5
+
+  result.ts = reading.ts
+  result.count = reading.count
+  for i in 0 ..< N:
+    result[i].convert(reading[i], calibration[i])
+
+proc convert*[N: static[int], T, G, V](
+    calibration: CalibTuple[N, G],
+    reading: AdcReadingTuple[G],
+): AdcReading[N, V] =
+  # Creates a new AdcReading with channels converted using the calibration. 
+  # 
+
   runnableExamples:
     var calibration: Calibs[1, ScaleConv, Volts]
     calibration[0].calFactor = 1.0e-1
@@ -95,8 +120,9 @@ proc transpose*[N, T, G1, G2, V](
 #
 
 type
-  VoltsConv* = object
-  VoltsCalib*[N: static[int]] = Calibs[N, ScaleConv, Volts]
+  AdcVoltsConv* = ScaleConv
+
+  VoltsCalib*[N: static[int]] = Calibs[N, AdcVoltsConv, Volts]
 
     # an Adc-to-Volts calibration for an AdcReading of N channels
 

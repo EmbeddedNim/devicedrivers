@@ -22,6 +22,14 @@ type
     count*: int
     channels*: array[N, T]
 
+  AdcReadingTuple*[M] = object
+    # generic adc reading object 
+    # - `N` is the max readings for the ADC 
+    # - `T` is the basic reading type, e.g. int32 or float32 
+    ts*: MonoTime
+    data*: M
+
+
 proc `$`*(reading: AdcReading): string =
   var ts = Micros(convert(Nanoseconds, Microseconds, reading.ts.ticks))
   result &= "AdcReading("

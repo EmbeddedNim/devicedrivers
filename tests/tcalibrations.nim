@@ -32,6 +32,30 @@ suite "calibrations ":
     unittest.check abs(vreading[1].float32 - 200 * 1.0e-2) <= 1.0e-5
     unittest.check abs(vreading[2].float32 - 300 * 1.0e-3) <= 1.0e-5
 
+  test "test toVolts":
+    var calib = initAdcVoltsCalib[4](
+      vref = 4.Volts,
+      bits = 24,
+      bipolar = true,
+      gains = [1.0'f32, 1.0, 1.0, 1.0]
+    )
+
+    var reading: AdcReading[4, Bits24]
+    reading.count = 4
+    reading[0] = 100.Bits24
+    reading[1] = 500.Bits24
+    reading[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
+    reading[3].setSigned = 0x800000 # ads131 min FS 24-bit code
+
+    echo "reading: ", $(reading)
+
+    let vreading: AdcReading[4, Volts] = calib.convert(reading)
+    echo "vreading: ", $(vreading)
+    unittest.check vreading[0].float32 ~= 0.0000476837158203125'f32
+    unittest.check vreading[1].float32 ~= 0.0002384185791015625'f32
+    unittest.check vreading[2].float32 ~= 4.0'f32
+    unittest.check vreading[3].float32 ~= -4.0'f32
+
   test "test multi convs":
     var vcalib = initAdcVoltsCalib[2](
       vref = 4.Volts,
@@ -61,29 +85,23 @@ suite "calibrations ":
     assertNear areading[0], 20.0e-3.Amps, 1.0e-4
     assertNear areading[1], 4.0e-3.Amps, 1.0e-4
 
-  test "test toVolts":
-    var calib = initAdcVoltsCalib[4](
+  test "test tupl convs":
+    var vcalib = initTupleCalib(
       vref = 4.Volts,
       bits = 24,
       bipolar = true,
-      gains = [1.0'f32, 1.0, 1.0, 1.0]
+      gains = [1.0'f32, 1.0]
     )
 
-    var reading: AdcReading[4, Bits24]
-    reading.count = 4
-    reading[0] = 100.Bits24
-    reading[1] = 500.Bits24
-    reading[2].setSigned = 0x7FFFFF # ads131 max FS 24-bit code
-    reading[3].setSigned = 0x800000 # ads131 min FS 24-bit code
+    var reading: AdcReading[2, Bits24]
+    reading[0] = 4_610_000.Bits24
+    reading[1] = 923_000.Bits24
 
-    echo "reading: ", $(reading)
+    let
+      treading = vcalib.convert(reading)
 
-    let vreading: AdcReading[4, Volts] = calib.convert(reading)
-    echo "vreading: ", $(vreading)
-    unittest.check vreading[0].float32 ~= 0.0000476837158203125'f32
-    unittest.check vreading[1].float32 ~= 0.0002384185791015625'f32
-    unittest.check vreading[2].float32 ~= 4.0'f32
-    unittest.check vreading[3].float32 ~= -4.0'f32
+    echo "treading: ", $(treading)
+
 
   # test "test generic kinds":
 
