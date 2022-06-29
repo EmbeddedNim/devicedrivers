@@ -86,11 +86,12 @@ proc transpose*[N, T, G1, G2, V](
 #
 
 type
+  VoltsConv* = object
   VoltsCalib*[N: static[int]] = Calibs[N, OneFactorConv, Volts]
 
     # an Adc-to-Volts calibration for an AdcReading of N channels
 
-proc initVoltsCalib*[N: static[int]](
+proc initAdcVoltsCalib*[N: static[int]](
     vref: Volts,
     bits: range[0..64],
     bipolar: bool,

@@ -33,7 +33,7 @@ suite "calibrations ":
     unittest.check abs(vreading[2].float32 - 300 * 1.0e-3) <= 1.0e-5
 
   test "test multi convs":
-    var vcalib = initVoltsCalib[2](
+    var vcalib = initAdcVoltsCalib[2](
       vref = 4.Volts,
       bits = 24,
       bipolar = true,
@@ -62,7 +62,7 @@ suite "calibrations ":
     assertNear areading[1], 4.0e-3.Amps, 1.0e-4
 
   test "test toVolts":
-    var calib = initVoltsCalib[4](
+    var calib = initAdcVoltsCalib[4](
       vref = 4.Volts,
       bits = 24,
       bipolar = true,

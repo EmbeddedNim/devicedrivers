@@ -54,7 +54,7 @@ suite "bit ops":
     unittest.check regChSet1.uint8 == 0x60
 
   test "test toVolts":
-    var calib = initVoltsCalib[4](
+    var calib = initAdcVoltsCalib[4](
       vref = 4.Volts,
       bits = 24,
       bipolar = true,
