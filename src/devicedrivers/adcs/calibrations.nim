@@ -24,7 +24,7 @@
 ## - `G` calibration factors array
 ## 
 
-import std/[math, algorithm]
+import std/[math, algorithm, sequtils]
 
 import patty
 import persistent_enums
@@ -44,7 +44,7 @@ variantp BasicConversion:
   # Note: uses `patty` library to simplify variant types
   IdentityConv
   ScaleConv(f: float32)
-  LinearConv(scale: float32, offset: float32)
+  LinearConv(m: float32, n: float32)
   Poly3Conv(a, b, c: float32)
   LookupLowerBoundConv(llkeys: seq[float32], llvalues: seq[float32])
   # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
@@ -141,7 +141,7 @@ proc combine*(
 ): BasicConversion =
   # combine calibs??
 
-  ## start from the most basic, most of these *should* be commutable operations ?
+  ## start from the most basic
   match lhs:
     IdentityConv:
       result = rhs
@@ -151,22 +151,21 @@ proc combine*(
         ScaleConv(f2):
           result = ScaleConv(f = f1*f2)
 
-        LinearConv(scale2, offset2):
-          result = LinearConv(scale = f1*scale2, offset = f1*offset2)
+        LinearConv(m2, n2):
+          result = LinearConv(m = f1*m2, n = n2)
 
         Poly3Conv(a2, b2, c2):
-          result = Poly3Conv(a = f1*a2, b = f1*b2, c = f1*c2)
+          result = Poly3Conv(a = a2, b = f1*b2, c = f1^2*c2)
 
-        LookupLowerBoundConv(llkeys: lk, llvalues: lv):
-          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
+        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+          var lk = lk2.mapIt(it / f1)
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
-        _:
-          discard
 
-    LinearConv(scale1, offset1):
+    LinearConv(m1, n1):
       match rhs:
-        LinearConv(scale2, offset2):
-          result = LinearConv(scale=1, offset=1)
+        LinearConv(m2, n2):
+          result = LinearConv(m=1, n=1)
 
         Poly3Conv(a2, b2, c2):
           result = Poly3Conv(a=1, b=1, c=1)
