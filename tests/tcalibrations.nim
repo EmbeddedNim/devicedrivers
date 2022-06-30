@@ -22,7 +22,7 @@ suite "calibrations ":
     let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
 
     # TODO: get this to work?
-    let mAReadingCalib: ReadingCalib[RdAmps, Amps] = transpose(vcalib, mAcalib)
+    let mAReadingCalib: ReadingCalib[Amps] = transpose(vcalib, mAcalib)
     echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
     echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
 
