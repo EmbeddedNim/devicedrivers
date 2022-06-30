@@ -15,10 +15,10 @@ import devicedrivers/adcs/calibrations
 suite "calibrations ":
 
   test "test convert":
-    var calibs: Calibs[3, ScaleConv, Volts]
-    calibs[0].scale = 1.0e-1
-    calibs[1].scale = 1.0e-2
-    calibs[2].scale = 1.0e-3
+    var calibs: BasicCalibs[3, Volts]
+    calibs[0] = ScaleConv(scale = 1.0e-1)
+    calibs[1] = ScaleConv(scale = 1.0e-2)
+    calibs[2] = ScaleConv(scale = 1.0e-3)
 
     var reading: AdcReading[3, Bits24]
     reading.count = 4

@@ -47,7 +47,7 @@ type
     val*: float32
 
 
-variant BasicConversion:
+variantp BasicConversion:
   # creates a Nim variant types
   # Note: uses `patty` library to simplify variant types
   ScaleConv(scale: float32)
