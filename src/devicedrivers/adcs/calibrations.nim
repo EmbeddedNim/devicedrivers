@@ -40,20 +40,22 @@ import adcutils
 
 type
 
-  ReadingKind* = distinct uint16
+  ReadingCode* = distinct uint16
 
   SomeReading* = object
-    unit*: ReadingKind
+    unit*: ReadingCode
     val*: float32
 
 
 variantp BasicConversion:
   # creates a Nim variant types
   # Note: uses `patty` library to simplify variant types
+  IdentityConv
   ScaleConv(scale: float32)
   LinearConv(slope: float32, offset: float32)
   Poly3Conv(a0, a1, a2: float32)
   LookupLowerBoundConv(keys: seq[float32], values: seq[float32])
+  # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
 
 
 proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
@@ -98,19 +100,9 @@ proc convert*[N: static[int], T, V](
   for i in 0 ..< N:
     result[i].convert(reading[i], calibration[i])
 
-proc transpose*[N, T, V](
-    a: BasicCalibs[N, T],
-    b: BasicCalibs[N, V],
-    idx: int
-): BasicCalibs[N, V] =
-  # combine calibs??
-  discard
-
 ## AdcReading Voltage Calibration
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## 
-## helpers for AdcReading's 
-##
 
 type
   VoltsConv* = object
@@ -133,8 +125,6 @@ proc initAdcVoltsCalib*[N: static[int]](
 ## AdcReading Current Calibration
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## 
-## helpers for AdcReading's 
-##
 
 type
   CurrentSenseCalib*[N: static[int]] = BasicCalibs[N, Amps]
@@ -147,3 +137,32 @@ proc initCurrentSenseCalib*[N: static[int]](
   for i in 0 ..< N:
     result[i].scale = 1.0'f32 / resistors[i]
 
+## Multiple Calibrations (WIP)
+## 
+
+type
+  ReadingCalib* = object
+    kind*: ReadingCode
+    conv*: BasicConversion
+
+  CombinedCalibs* = object
+    pre*: BasicConversion
+    post*: BasicConversion
+
+proc transpose*[T, V](
+    a: BasicCalibs[N, T],
+    b: BasicCalibs[N, V],
+): BasicCalibs[N, V] =
+  # combine calibs??
+
+  let x = val.float32
+  match conv:
+    ScaleConv(scale: scale):
+      res = V(scale * x)
+    LinearConv(slope: a, offset: b):
+      res = V(a * x + b)
+    Poly3Conv(a0: a0, a1: a1, a2: a2):
+      res = V(a0 + a1*x^1 + a2*x^2)
+    LookupLowerBoundConv(keys: keys, values: values):
+      let idx = keys.lowerBound(x)
+      res = V(values[idx])
