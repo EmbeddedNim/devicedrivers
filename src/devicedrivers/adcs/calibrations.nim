@@ -85,7 +85,7 @@ type
 
 type
 
-  ReadingCods* {.persistent.} = enum
+  ReadingCodes* {.persistent.} = enum
     ## table of reading codes "persistent" enum 
     rdAdcRawVolts
     rdVolts
@@ -95,8 +95,8 @@ type
     rdDeltaFlowKPa
     # ... etc
 
-  AdcVoltsCalib* = ReadingCalib[rdAdcRawVolts]
-  CurrentSenseCalib* = ReadingCalib[rdAmps]
+  AdcVoltsCalib* = ReadingCalib[rdAdcRawVolts, Volts]
+  CurrentSenseCalib* = ReadingCalib[rdAmps, Amps]
 
 
 proc init*(
@@ -114,7 +114,7 @@ proc init*(
 
 proc init*(
     tp: typedesc[CurrentSenseCalib],
-    resistor: Ohm,
+    resistor: Ohms,
 ): CurrentSenseCalib =
   ## initialize calibration for a shunt resistor based current sensor
   result.conv = ScaleConv(scale = 1.0'f32 / resistor)
