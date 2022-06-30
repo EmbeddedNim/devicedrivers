@@ -180,6 +180,11 @@ proc combine*[T, V](
     lhs: ReadingCalib[T],
     rhs: ReadingCalib[V],
 ): ReadingCalib[V] =
+  echo "combine"
+  let lc = lhs.conv
+  echo "combine:lc:", lc
+  let rc = rhs.conv
+  echo "combine:rc:", rc
   result = ReadingCalib[V](conv: combine(lhs.conv, rhs.conv))
 
 
@@ -188,6 +193,7 @@ proc compose*[T, V](
     b: CombinedCalibs[V],
 ): CombinedCalibs[V] =
   # combine calibs??
+  echo "combine"
   discard
 
 
