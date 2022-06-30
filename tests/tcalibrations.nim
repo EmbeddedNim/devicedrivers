@@ -3,7 +3,7 @@ import strutils
 import bitops
 import print
 import typetraits
-import std/[bitops, strutils]
+import std/[bitops, strutils, strformat]
 
 import mcu_utils/basics
 import mcu_utils/basictypes
@@ -20,6 +20,11 @@ suite "calibrations ":
                                     bipolar=true,
                                     gain = 2.0.Gain)
     let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
+
+    # TODO: get this to work?
+    let mAReadingCalib = transpose(vcalib, mAcalib)
+    echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
+    echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
 
   test "test convert":
     var calibs: ChannelsCalibs[3, Volts]

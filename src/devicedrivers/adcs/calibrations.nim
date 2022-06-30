@@ -83,18 +83,19 @@ type
     conv*: BasicConversion
 
 
+
 type
+  ## table of reading codes "persistent" enum 
+  rdAdcRawVolts* = distinct ReadingCode
+  rdVolts* = distinct ReadingCode
+  rdAmps* = distinct ReadingCode
+  rdPressure* = distinct ReadingCode
+  rdFlowKPa* = distinct ReadingCode
+  rdDeltaFlowKPa* = distinct ReadingCode
+  # ... etc
 
-  ReadingCodes* {.persistent.} = enum
-    ## table of reading codes "persistent" enum 
-    rdAdcRawVolts
-    rdVolts
-    rdAmps
-    rdPressure
-    rdFlowKPa
-    rdDeltaFlowKPa
-    # ... etc
 
+type
   AdcVoltsCalib* = ReadingCalib[rdAdcRawVolts, Volts]
   CurrentSenseCalib* = ReadingCalib[rdAmps, Amps]
 
@@ -121,6 +122,13 @@ proc init*(
 
 ## Combined Calibrations (WIP)
 ## 
+
+proc transpose*[R1, R2, T, V](
+    a: ReadingCalib[R1, T],
+    b: ReadingCalib[R2, V],
+): ReadingCalib[R2, V] =
+  # combine calibs??
+  discard
 
 type
   CombinedCalibs*[T] = object
