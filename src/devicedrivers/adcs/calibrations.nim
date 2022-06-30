@@ -156,6 +156,8 @@ proc combine*(
           result = Poly3Conv(a0=f*a0, a1=f*a1, a2=f*a2)
         LookupLowerBoundConv(llkeys: lk, llvalues: lv):
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
+        _:
+          discard
 
     LinearConv(a1, b1):
       match rhs:
@@ -165,6 +167,8 @@ proc combine*(
           result = Poly3Conv(a0=1, a1=1, a2=1)
         LookupLowerBoundConv(llkeys: lk, llvalues: lv):
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
+        _:
+          discard
 
     Poly3Conv(a0, a1, a2):
       discard
