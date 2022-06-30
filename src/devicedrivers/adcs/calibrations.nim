@@ -44,9 +44,9 @@ variantp BasicConversion:
   # Note: uses `patty` library to simplify variant types
   IdentityConv
   ScaleConv(f: float32)
-  LinearConv(slope: float32, offset: float32)
+  LinearConv(m: float32, b: float32)
   Poly3Conv(a0, a1, a2: float32)
-  LookupLowerBoundConv(keys: seq[float32], values: seq[float32])
+  LookupLowerBoundConv(llkeys: seq[float32], llvalues: seq[float32])
   # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
 
 
@@ -55,13 +55,13 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
   match conv:
     IdentityConv:
       res = V(x)
-    ScaleConv(f: s):
-      res = V(f * x)
-    LinearConv(slope: a, offset: b):
-      res = V(a * x + b)
+    ScaleConv(f: factor):
+      res = V(factor * x)
+    LinearConv(m: slope, b: offset):
+      res = V(slope*x + offset)
     Poly3Conv(a0: a0, a1: a1, a2: a2):
       res = V(a0 + a1*x^1 + a2*x^2)
-    LookupLowerBoundConv(keys: keys, values: values):
+    LookupLowerBoundConv(llkeys: keys, llvalues: values):
       let idx = keys.lowerBound(x)
       res = V(values[idx])
 
