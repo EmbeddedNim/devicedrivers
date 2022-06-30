@@ -47,7 +47,7 @@ type
     val*: float32
 
 
-variant Conversion:
+variant BasicConversion:
   # creates a Nim variant types
   # Note: uses `patty` library to simplify variant types
   ScaleConv(scale: float32)
@@ -56,7 +56,7 @@ variant Conversion:
   LookupLowerBoundConv(keys: seq[float32], values: seq[float32])
 
 
-proc convert*[T, V](res: var V, val: T, conv: Conversion) =
+proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
   let x = val.float32
   match conv:
     ScaleConv(scale: scale):
@@ -74,16 +74,16 @@ proc convert*[T, V](res: var V, val: T, conv: Conversion) =
 ## ~~~~~~~~~~~~~~~~~~~~~~
 ## 
 type
-  Calibs*[N: static[int], G, V] = array[N, G]
+  BasicCalibs*[N: static[int], V] = array[N, BasicConversion]
 
-proc convert*[N: static[int], T, G, V](
-    calibration: Calibs[N, G, V],
+proc convert*[N: static[int], T, V](
+    calibration: BasicCalibs[N, V],
     reading: AdcReading[N, T],
 ): AdcReading[N, V] =
   ## Creates a new AdcReading with channels converted using the calibration. 
   ## 
   runnableExamples:
-    var calibration: Calibs[1, ScaleConv, Volts]
+    var calibration: BasicCalibs[1, ScaleConv, Volts]
     calibration[0].calFactor = 1.0e-1
 
     var reading: AdcReading[1, Bits24]
@@ -98,11 +98,11 @@ proc convert*[N: static[int], T, G, V](
   for i in 0 ..< N:
     result[i].convert(reading[i], calibration[i])
 
-proc transpose*[N, T, G1, G2, V](
-    a: Calibs[N, G1, T],
-    b: Calibs[N, G2, V],
+proc transpose*[N, T, V](
+    a: BasicCalibs[N, T],
+    b: BasicCalibs[N, V],
     idx: int
-): Calibs[N, G2, V] =
+): BasicCalibs[N, V] =
   # combine calibs??
   discard
 
@@ -114,7 +114,7 @@ proc transpose*[N, T, G1, G2, V](
 
 type
   VoltsConv* = object
-  VoltsCalib*[N: static[int]] = Calibs[N, ScaleConv, Volts]
+  VoltsCalib*[N: static[int]] = BasicCalibs[N, Volts]
 
 
 proc initAdcVoltsCalib*[N: static[int]](
@@ -137,7 +137,7 @@ proc initAdcVoltsCalib*[N: static[int]](
 ##
 
 type
-  CurrentSenseCalib*[N: static[int]] = Calibs[N, ScaleConv, Amps]
+  CurrentSenseCalib*[N: static[int]] = BasicCalibs[N, Amps]
 
 
 proc initCurrentSenseCalib*[N: static[int]](
@@ -147,44 +147,3 @@ proc initCurrentSenseCalib*[N: static[int]](
   for i in 0 ..< N:
     result[i].scale = 1.0'f32 / resistors[i]
 
-
-## Experimental Configurable Calibrations
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 
-## WIP
-##
-
-
-type
-  ConverterKinds* {.pure.} = enum
-    Scale
-    Linear
-    Poly3
-    Lookup
-
-  GenericConv* = object
-    case kind*: ConverterKinds
-    of Scale:
-      onefact*: ScaleConv
-    of Linear:
-      twofact*: LinearConv
-    of Poly3:
-      threefact*: Poly3Conv
-    of Lookup:
-      lookup*: LookupConv
-
-  GenericUnitsCalib*[N: static[int]] = Calibs[N, GenericConv, SomeReading]
-
-
-proc initGenericReadingCalibs*[N: static[int]](
-  conversions: array[N, GenericConv]
-): GenericUnitsCalib[N] =
-  for i in 0 ..< N:
-    result[i] = conversions[i]
-
-type
-  ResistorDividerConv* = distinct ScaleConv
-
-# proc convert*[T, V](res: var V, val: T, ch: ScaleConv) =
-#   # convert to volts
-#   res = V(val.float32 * ch.calFactor)
