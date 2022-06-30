@@ -83,21 +83,20 @@ type
     conv*: BasicConversion
 
 
-
-const
+type
   ## table of reading codes "persistent" enum 
-  rdAdcRawVolts* = 12.ReadingCode
-  rdVolts* = 13.ReadingCode
-  rdAmps* = 14.ReadingCode
-  rdPressure* = 15.ReadingCode
-  rdFlowKPa* = 16.ReadingCode
-  rdDeltaFlowKPa* = 17.ReadingCode
+  RdAdcRawVolts* = distinct ReadingCode
+  RdVolts* = distinct ReadingCode
+  RdAmps* = distinct ReadingCode
+  RdPressure* = distinct ReadingCode
+  RdFlowKPa* = distinct ReadingCode
+  RdDeltaFlowKPa* = distinct ReadingCode
   # ... etc
 
 
 type
-  AdcVoltsCalib* = ReadingCalib[rdAdcRawVolts, Volts]
-  CurrentSenseCalib* = ReadingCalib[rdAmps, Amps]
+  AdcVoltsCalib* = ReadingCalib[RdAdcRawVolts, Volts]
+  CurrentSenseCalib* = ReadingCalib[RdAmps, Amps]
 
 proc init*(
     tp: typedesc[AdcVoltsCalib],
