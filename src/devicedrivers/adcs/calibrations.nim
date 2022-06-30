@@ -179,10 +179,10 @@ proc combine*(
           result = Poly3Conv(a = a, b = b, c = c)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
-          var lk = lk2.mapIt(it / f1)
+          # sympy: ' k1 > m1 * x + n1'
+          # so: ' (k1 - n1) / m1 > x'
+          var lk = lk2.mapIt( (it - n1) / m1 )
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
-        _:
-          discard
 
     Poly3Conv(a0, a1, a2):
       discard
