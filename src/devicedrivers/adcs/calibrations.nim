@@ -75,7 +75,7 @@ type
     val*: float32
 
 
-  ReadingCalib*[T] = object
+  ReadingCalib*[R, V] = object
     conv*: BasicConversion
 
   ReadingIdCalib* = object
@@ -98,18 +98,17 @@ type
   AdcVoltsCalib* = ReadingCalib[rdAdcRawVolts, Volts]
   CurrentSenseCalib* = ReadingCalib[rdAmps, Amps]
 
-
 proc init*(
     tp: typedesc[AdcVoltsCalib],
     vref: Volts,
     bits: range[0..64],
     bipolar: bool,
-    gains: Gain,
+    gain: Gain,
 ): AdcVoltsCalib =
   ## initalize a calibration for adc-bits to voltage conversion
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   let factor = vref.float32 / bitspace.float32
-  result.conv = ScaleConv(scale = factor / gains)
+  result.conv = ScaleConv(f = factor / gain.float32)
 
 
 proc init*(
@@ -117,7 +116,7 @@ proc init*(
     resistor: Ohms,
 ): CurrentSenseCalib =
   ## initialize calibration for a shunt resistor based current sensor
-  result.conv = ScaleConv(scale = 1.0'f32 / resistor)
+  result.conv = ScaleConv(f = 1.0'f32 / resistor.float32)
 
 
 ## Combined Calibrations (WIP)

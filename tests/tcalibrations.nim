@@ -15,10 +15,11 @@ import devicedrivers/adcs/calibrations
 suite "calibrations ":
 
   test "test reading codes":
-    var calibs: ChannelsCalibs[3, Volts]
-    calibs[0] = ScaleConv(f = 1.0e-1)
-    calibs[1] = ScaleConv(f = 1.0e-2)
-    calibs[2] = ScaleConv(f = 1.0e-3)
+    let vcalib = AdcVoltsCalib.init(vref=4.Volts,
+                                    bits=24,
+                                    bipolar=true,
+                                    gain = 2.0.Gain)
+    let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
 
   test "test convert":
     var calibs: ChannelsCalibs[3, Volts]
