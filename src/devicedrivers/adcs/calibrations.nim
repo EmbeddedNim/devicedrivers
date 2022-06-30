@@ -82,6 +82,9 @@ type
     kind*: ReadingCode
     conv*: BasicConversion
 
+  CombinedCalibs*[T] = object
+    pre*: BasicConversion
+    post*: BasicConversion
 
 type
 
@@ -137,16 +140,31 @@ proc combine*(
     rhs: BasicConversion,
 ): BasicConversion =
   # combine calibs??
+
+  ## start from the most basic, most of these *should* be commutable operations ?
   match lhs:
     IdentityConv:
       result = rhs
+
     ScaleConv(f):
       match rhs:
         ScaleConv(g):
           result = ScaleConv(f*g)
+        LinearConv(a2, b2):
+          result = LinearConv(m=f*a2, b=f*b2)
+        Poly3Conv(a0, a1, a2):
+          result = Poly3Conv(a0=f*a0, a1=f*a1, a2=f*a2)
+        LookupLowerBoundConv(llkeys: lk, llvalues: lv):
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
 
-    LinearConv(m, b):
-      discard
+    LinearConv(a1, b1):
+      match rhs:
+        LinearConv(a2, b2):
+          result = LinearConv(m=1, b=1)
+        Poly3Conv(a0, a1, a2):
+          result = Poly3Conv(a0=1, a1=1, a2=1)
+        LookupLowerBoundConv(llkeys: lk, llvalues: lv):
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
 
     Poly3Conv(a0, a1, a2):
       discard
@@ -160,10 +178,6 @@ proc combine*[T, V](
 ): ReadingCalib[V] =
   result = ReadingCalib[V](conv: combine(lhs.conv, rhs.conv))
 
-type
-  CombinedCalibs*[T] = object
-    pre*: BasicConversion
-    post*: BasicConversion
 
 proc compose*[T, V](
     a: CombinedCalibs[T],
