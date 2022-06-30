@@ -132,19 +132,40 @@ proc init*(
 ## Combined Calibrations (WIP)
 ## 
 
-proc transpose*[T, V](
-    a: ReadingCalib[T],
-    b: ReadingCalib[V],
-): ReadingCalib[V] =
+proc combine*(
+    lhs: BasicConversion,
+    rhs: BasicConversion,
+): BasicConversion =
   # combine calibs??
-  discard
+  match lhs:
+    IdentityConv:
+      result = rhs
+    ScaleConv(f):
+      match rhs:
+        ScaleConv(g):
+          result = ScaleConv(f*g)
+
+    LinearConv(m, b):
+      discard
+
+    Poly3Conv(a0, a1, a2):
+      discard
+
+    LookupLowerBoundConv(llkeys, llvalues):
+      discard
+
+proc combine*[T, V](
+    lhs: ReadingCalib[T],
+    rhs: ReadingCalib[V],
+): ReadingCalib[V] =
+  result = ReadingCalib[V](conv: combine(lhs.conv, rhs.conv))
 
 type
   CombinedCalibs*[T] = object
     pre*: BasicConversion
     post*: BasicConversion
 
-proc transpose*[T, V](
+proc compose*[T, V](
     a: CombinedCalibs[T],
     b: CombinedCalibs[V],
 ): CombinedCalibs[V] =
