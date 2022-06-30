@@ -43,7 +43,7 @@ variantp BasicConversion:
   # creates a Nim variant types
   # Note: uses `patty` library to simplify variant types
   IdentityConv
-  ScaleConv(scale: float32)
+  ScaleConv(f: float32)
   LinearConv(slope: float32, offset: float32)
   Poly3Conv(a0, a1, a2: float32)
   LookupLowerBoundConv(keys: seq[float32], values: seq[float32])
@@ -53,8 +53,10 @@ variantp BasicConversion:
 proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
   let x = val.float32
   match conv:
-    ScaleConv(scale: scale):
-      res = V(scale * x)
+    IdentityConv:
+      res = V(x)
+    ScaleConv(f: s):
+      res = V(f * x)
     LinearConv(slope: a, offset: b):
       res = V(a * x + b)
     Poly3Conv(a0: a0, a1: a1, a2: a2):
@@ -102,7 +104,7 @@ proc init*(
     vref: Volts,
     bits: range[0..64],
     bipolar: bool,
-    gains: float32,
+    gains: Gain,
 ): AdcVoltsCalib =
   ## initalize a calibration for adc-bits to voltage conversion
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
@@ -112,7 +114,7 @@ proc init*(
 
 proc init*(
     tp: typedesc[CurrentSenseCalib],
-    resistor: float32,
+    resistor: Ohm,
 ): CurrentSenseCalib =
   ## initialize calibration for a shunt resistor based current sensor
   result.conv = ScaleConv(scale = 1.0'f32 / resistor)
@@ -135,9 +137,13 @@ proc transpose*[T, V](
 
 
 ## Array of BasicConv for single layer 'static' conversions
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## 
+
 type
   ChannelsCalibs*[N: static[int], V] = array[N, BasicConversion]
+
+
 proc convert*[N: static[int], T, V](
     calibration: ChannelsCalibs[N, V],
     reading: AdcReading[N, T],
@@ -160,14 +166,9 @@ proc convert*[N: static[int], T, V](
   for i in 0 ..< N:
     result[i].convert(reading[i], calibration[i])
 
-## AdcReading Voltage Calibration
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 
-
 type
-  VoltsConv* = object
 
-  VoltsCalib*[N: static[int]] = ChannelsCalibs[N, Volts]
+  VoltsCalibs*[N: static[int]] = ChannelsCalibs[N, Volts]
 
 
 proc initAdcVoltsCalib*[N: static[int]](
@@ -175,25 +176,21 @@ proc initAdcVoltsCalib*[N: static[int]](
     bits: range[0..64],
     bipolar: bool,
     gains: array[N, float32],
-): VoltsCalib[N] =
+): VoltsCalibs[N] =
   ## initalize a calibration for adc-bits to voltage conversion
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   let factor = vref.float32 / bitspace.float32
   for i in 0 ..< N:
-    result[i].scale = factor / gains[i]
+    result[i] = ScaleConv(f = factor / gains[i])
 
-
-## AdcReading Current Calibration
-## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 
 
 type
-  CurrentSenseCalib*[N: static[int]] = BasicCalibs[N, Amps]
+  CurrentSenseCalibs*[N: static[int]] = ChannelsCalibs[N, Amps]
 
 
 proc initCurrentSenseCalib*[N: static[int]](
     resistors: array[N, float32],
-): CurrentSenseCalib[N] =
+): CurrentSenseCalibs[N] =
   ## initialize calibration for a shunt resistor based current sensor
   for i in 0 ..< N:
-    result[i].scale = 1.0'f32 / resistors[i]
+    result[i] = ScaleConv(f = 1.0'f32 / resistors[i])
