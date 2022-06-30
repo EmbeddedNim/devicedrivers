@@ -164,15 +164,23 @@ proc combine*(
 
     LinearConv(m1, n1):
       match rhs:
+        ScaleConv(f2):
+          result = LinearConv(m = f2*m1, n = n1)
+
         LinearConv(m2, n2):
-          result = LinearConv(m=1, n=1)
+          result = LinearConv(m = m1*m2, n = m2*n1 + n2)
 
         Poly3Conv(a2, b2, c2):
-          result = Poly3Conv(a=1, b=1, c=1)
+          # from sympy:
+          #  a2 + b2*n1 + c2*m1**2*x**2 + c2*n1**2 + x*(b2*m1 + 2*c2*m1*n1)
+          let a = a2 + b2*n1 + c2*n1^2
+          let b = b2*m1 + 2*c2*m1*n1
+          let c = c2*m1^2
+          result = Poly3Conv(a = a, b = b, c = c)
 
-        LookupLowerBoundConv(llkeys: lk, llvalues: lv):
-          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
-
+        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+          var lk = lk2.mapIt(it / f1)
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
         _:
           discard
 
