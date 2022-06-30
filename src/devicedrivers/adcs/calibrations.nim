@@ -24,48 +24,50 @@
 ## - `G` calibration factors array
 ## 
 
+import std/[math, algorithm]
+
+import patty
 
 import mcu_utils/basictypes
 import mcu_utils/timeutils
 import mcu_utils/logging
-import adcutils
-import patty
 
-import math
 import adcutils
 
 
 ## Calibration Basics
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 type
-  ScaleConv* = object
-    ## per channel config for a calibration setup
-    scale*: float32
 
-  LinearConv* = object
-    ## per channel config for a calibration setup
-    slope*: float32
-    offset*: float32
+  ReadingKind* = distinct uint16
 
-  Poly3Conv* = object
-    ## per channel config for a calibration setup
-    a0*: float32
-    a1*: float32
-    a2*: float32
+  SomeReading* = object
+    unit*: ReadingKind
+    val*: float32
 
 
-proc convert*[T, V](res: var V, val: T, ch: ScaleConv) =
-  # convert to volts
-  res = V(val.float32 * ch.scale)
+variant Conversion:
+  # creates a Nim variant types
+  # Note: uses `patty` library to simplify variant types
+  ScaleConv(scale: float32)
+  LinearConv(slope: float32, offset: float32)
+  Poly3Conv(a0, a1, a2: float32)
+  LookupLowerBoundConv(keys: seq[float32], values: seq[float32])
 
-proc convert*[T, V](res: var V, val: T, ch: LinearConv) =
-  # convert to volts
-  res = V(val.float32 * ch.scale + ch.offset)
 
-proc convert*[T, V](res: var V, val: T, ch: Poly3Conv) =
-  # convert to volts
-  let v = val.float32
-  res = V(ch.a0 + ch.a1*v^1 + ch.a2*v^2)
+proc convert*[T, V](res: var V, val: T, conv: Conversion) =
+  let x = val.float32
+  match conv:
+    ScaleConv(scale: scale):
+      res = V(scale * x)
+    LinearConv(slope: a, offset: b):
+      res = V(a * x + b)
+    Poly3Conv(a0: a0, a1: a1, a2: a2):
+      res = V(a0 + a1*x^1 + a2*x^2)
+    LookupLowerBoundConv(keys: keys, values: values):
+      let idx = keys.lowerBound(x)
+      res = V(values[idx])
 
 
 ## AdcReading Single Type Calibration
@@ -152,20 +154,13 @@ proc initCurrentSenseCalib*[N: static[int]](
 ## WIP
 ##
 
-type
-
-  ReadingKind* = distinct uint16
-
-  SomeReading* = object
-    unit*: ReadingKind
-    val*: float32
-
 
 type
   ConverterKinds* {.pure.} = enum
     Scale
     Linear
     Poly3
+    Lookup
 
   GenericConv* = object
     case kind*: ConverterKinds
@@ -175,6 +170,8 @@ type
       twofact*: LinearConv
     of Poly3:
       threefact*: Poly3Conv
+    of Lookup:
+      lookup*: LookupConv
 
   GenericUnitsCalib*[N: static[int]] = Calibs[N, GenericConv, SomeReading]
 
