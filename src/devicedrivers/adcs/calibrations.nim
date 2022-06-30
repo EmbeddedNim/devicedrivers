@@ -149,13 +149,13 @@ proc combine*(
     ScaleConv(f1):
       match rhs:
         ScaleConv(f2):
-          result = ScaleConv(f2*f1)
+          result = ScaleConv(f = f1*f2)
 
         LinearConv(scale2, offset2):
-          result = LinearConv(scale=f1*scale2, offset=f1*offset2)
+          result = LinearConv(scale = f1*scale2, offset = f1*offset2)
 
         Poly3Conv(a2, b2, c2):
-          result = Poly3Conv(a=f1*a2, b=f1*b2, c=f1*c2)
+          result = Poly3Conv(a = f1*a2, b = f1*b2, c = f1*c2)
 
         LookupLowerBoundConv(llkeys: lk, llvalues: lv):
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
