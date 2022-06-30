@@ -84,14 +84,14 @@ type
 
 
 
-type
+const
   ## table of reading codes "persistent" enum 
-  rdAdcRawVolts* = distinct ReadingCode
-  rdVolts* = distinct ReadingCode
-  rdAmps* = distinct ReadingCode
-  rdPressure* = distinct ReadingCode
-  rdFlowKPa* = distinct ReadingCode
-  rdDeltaFlowKPa* = distinct ReadingCode
+  rdAdcRawVolts* = 12.ReadingCode
+  rdVolts* = 13.ReadingCode
+  rdAmps* = 14.ReadingCode
+  rdPressure* = 15.ReadingCode
+  rdFlowKPa* = 16.ReadingCode
+  rdDeltaFlowKPa* = 17.ReadingCode
   # ... etc
 
 
