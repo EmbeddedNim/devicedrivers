@@ -44,8 +44,8 @@ variantp BasicConversion:
   # Note: uses `patty` library to simplify variant types
   IdentityConv
   ScaleConv(f: float32)
-  LinearConv(m: float32, b: float32)
-  Poly3Conv(a0, a1, a2: float32)
+  LinearConv(scale: float32, offset: float32)
+  Poly3Conv(a, b, c: float32)
   LookupLowerBoundConv(llkeys: seq[float32], llvalues: seq[float32])
   # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
 
@@ -57,10 +57,10 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
       res = V(x)
     ScaleConv(f: factor):
       res = V(factor * x)
-    LinearConv(m: slope, b: offset):
+    LinearConv(slope, offset):
       res = V(slope*x + offset)
-    Poly3Conv(a0: a0, a1: a1, a2: a2):
-      res = V(a0 + a1*x^1 + a2*x^2)
+    Poly3Conv(a, b, c):
+      res = V(a + b*x^1 + c*x^2)
     LookupLowerBoundConv(llkeys: keys, llvalues: values):
       let idx = keys.lowerBound(x)
       res = V(values[idx])
@@ -146,27 +146,34 @@ proc combine*(
     IdentityConv:
       result = rhs
 
-    ScaleConv(f):
+    ScaleConv(f1):
       match rhs:
-        ScaleConv(g):
-          result = ScaleConv(f*g)
-        LinearConv(a2, b2):
-          result = LinearConv(m=f*a2, b=f*b2)
-        Poly3Conv(a0, a1, a2):
-          result = Poly3Conv(a0=f*a0, a1=f*a1, a2=f*a2)
+        ScaleConv(f2):
+          result = ScaleConv(f2*f1)
+
+        LinearConv(scale2, offset2):
+          result = LinearConv(scale=f1*scale2, offset=f1*offset2)
+
+        Poly3Conv(a2, b2, c2):
+          result = Poly3Conv(a=f1*a2, b=f1*b2, c=f1*c2)
+
         LookupLowerBoundConv(llkeys: lk, llvalues: lv):
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
+
         _:
           discard
 
-    LinearConv(a1, b1):
+    LinearConv(scale1, offset1):
       match rhs:
-        LinearConv(a2, b2):
-          result = LinearConv(m=1, b=1)
-        Poly3Conv(a0, a1, a2):
-          result = Poly3Conv(a0=1, a1=1, a2=1)
+        LinearConv(scale2, offset2):
+          result = LinearConv(scale=1, offset=1)
+
+        Poly3Conv(a2, b2, c2):
+          result = Poly3Conv(a=1, b=1, c=1)
+
         LookupLowerBoundConv(llkeys: lk, llvalues: lv):
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv)
+
         _:
           discard
 
