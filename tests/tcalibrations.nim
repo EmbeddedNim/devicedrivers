@@ -98,13 +98,20 @@ suite "calibrations ":
     assertNear reading, 2.0.Volts
     reading = vcalib.convert(Bits24.signed(0x800000))
     assertNear reading, -2.0.Volts
+    reading = vcalib.convert(Bits24.signed(0x00000))
+    assertNear reading, 0.0.Volts
 
   test "test calib convert":
-    let vcalib = AdcVoltsCalib.init(vref=4.Volts,
-                                    bits=24,
-                                    bipolar=true,
-                                    gain = 2.0.Gain)
-    let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
+    let vcalib = AdcVoltsCalib.init(
+      vref=4.Volts,
+      bits=24,
+      bipolar=true,
+      gain = 1.0.Gain
+    )
+
+    let mAcalib = CurrentSenseCalib.init(
+      resistor = 110.Ohms
+    ) 
 
     # TODO: get this to work?
     let mAReadingCalib: ReadingCalib[Amps] = reduce(vcalib, mAcalib)
@@ -113,7 +120,7 @@ suite "calibrations ":
 
     var reading: Amps
 
-    reading = mAReadingCalib.convert(0x7FFFFF.Bits24)
+    reading = mAReadingCalib.convert(Bits24.signed(0x7FFFFF))
     echo fmt"reading : {repr reading=}"
 
 
