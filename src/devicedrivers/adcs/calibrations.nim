@@ -121,7 +121,7 @@ proc init*(
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   let factor = vref.float32 / bitspace.float32
   let conv = ScaleConv(f = factor / gain.float32)
-  result = ReadingCalib[Volts](kind: Single, calib: conv)
+  result = ReadingCalib[Volts](calib: conv)
 
 
 proc init*(
