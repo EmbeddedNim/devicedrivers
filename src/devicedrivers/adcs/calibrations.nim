@@ -24,7 +24,7 @@
 ## - `G` calibration factors array
 ## 
 
-import std/[math, algorithm, sequtils]
+import std/[math, algorithm, sequtils, options]
 
 import patty
 import persistent_enums
@@ -49,6 +49,8 @@ variantp BasicConversion:
   LookupLowerBoundConv(llkeys: seq[float32], llvalues: seq[float32])
   # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
 
+proc isIdentity*(conv: BasicConversion): bool =
+  result = conv.kind == BasicConversionKind.IdentityConv
 
 proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
   let x = val.float32
@@ -65,12 +67,6 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
       let idx = keys.lowerBound(x)
       res = V(values[idx])
 
-type
-
-  ReadingCalibKind* {.pure.} = enum
-    Single
-    Composite
-    Closure
 
 type
 
@@ -82,52 +78,56 @@ type
 
   ReadingCalib*[T] = object
     # code*: ReadingCode
-    pre*: BasicConversion
     calib*: BasicConversion
+
+  CompositeReadingCalib*[T] = object
+    # code*: ReadingCode
+    pre*: BasicConversion
+    post*: BasicConversion
 
 
 ## Combined Calibrations (WIP)
 ## 
 
-proc combine*[V](
+proc combine*(
     lhs: BasicConversion,
     rhs: BasicConversion,
-): ReadingCalib[V] =
+): BasicConversion =
   # combine calibs??
 
   ## start from the most basic
   match lhs:
     IdentityConv:
-      result.calib = rhs
+      result = rhs
 
     ScaleConv(f1):
       match rhs:
         IdentityConv:
-          result.calib = lhs
+          result = lhs
 
         ScaleConv(f2):
-          result.calib = ScaleConv(f = f1*f2)
+          result = ScaleConv(f = f1*f2)
 
         LinearConv(m2, n2):
-          result.calib = LinearConv(m = f1*m2, n = n2)
+          result = LinearConv(m = f1*m2, n = n2)
 
         Poly3Conv(a2, b2, c2):
-          result.calib = Poly3Conv(a = a2, b = f1*b2, c = f1^2*c2)
+          result = Poly3Conv(a = a2, b = f1*b2, c = f1^2*c2)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
           var lk = lk2.mapIt(it / f1)
-          result.calib = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
     LinearConv(m1, n1):
       match rhs:
         IdentityConv:
-          result.calib = lhs
+          result = lhs
 
         ScaleConv(f2):
-          result.calib = LinearConv(m = f2*m1, n = n1)
+          result = LinearConv(m = f2*m1, n = n1)
 
         LinearConv(m2, n2):
-          result.calib = LinearConv(m = m1*m2, n = m2*n1 + n2)
+          result = LinearConv(m = m1*m2, n = m2*n1 + n2)
 
         Poly3Conv(a2, b2, c2):
           # from sympy:
@@ -135,69 +135,78 @@ proc combine*[V](
           let a = a2 + b2*n1 + c2*n1^2
           let b = b2*m1 + 2*c2*m1*n1
           let c = c2*m1^2
-          result.calib = Poly3Conv(a = a, b = b, c = c)
+          result = Poly3Conv(a = a, b = b, c = c)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
           # sympy: ' k1 > m1 * x + n1'
           # so: ' (k1 - n1) / m1 > x'
           var lk = lk2.mapIt( (it - n1) / m1 )
-          result.calib = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
+          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
     Poly3Conv(a1, b1, c1):
       match rhs:
         IdentityConv:
-          result.calib = lhs
+          result = lhs
 
         ScaleConv(f2):
-          result.calib = Poly3Conv(a = a1*f2, b = b1*f2, c = c1*f2)
+          result = Poly3Conv(a = a1*f2, b = b1*f2, c = c1*f2)
 
         LinearConv(m2, n2):
           # sympy: a1*m2 + b1*m2*x + c1*m2*x^2 + n2
-          result.calib = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
+          result = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
 
         Poly3Conv(a2, b2, c2):
-          # raise newException(KeyError, "cannot combine poly3 with poly3")
-          result = ReadingCalib[V](pre: lhs, calib: rhs)
+          raise newException(KeyError, "cannot combine poly3 with poly3")
+          # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
-          # raise newException(KeyError, "cannot combine poly3 with lltable")
-          result = ReadingCalib[V](pre: lhs, calib: rhs)
+          raise newException(KeyError, "cannot combine poly3 with lltable")
+          # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
     LookupLowerBoundConv(lk1, lv1):
       match rhs:
         IdentityConv:
-          result.calib = lhs
+          result = lhs
         
         ScaleConv(f2):
           var lv = lv1.mapIt(it * f2)
-          result.calib = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
+          result = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
 
         LinearConv(m2, n2):
-          # raise newException(KeyError, "cannot combine lltable with poly3")
-          result = ReadingCalib[V](pre: lhs, calib: rhs)
+          raise newException(KeyError, "cannot combine lltable with poly3")
+          # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
         Poly3Conv(a2, b2, c2):
-          # raise newException(KeyError, "cannot combine lltable with poly3")
-          result = ReadingCalib[V](pre: lhs, calib: rhs)
+          raise newException(KeyError, "cannot combine lltable with poly3")
+          # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
-          # raise newException(KeyError, "cannot combine lltable with lltable")
-          result = ReadingCalib[V](pre: lhs, calib: rhs)
-
+          raise newException(KeyError, "cannot combine lltable with lltable")
+          # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
 proc combine*[T, V](
     lhs: ReadingCalib[T],
     rhs: ReadingCalib[V],
 ): ReadingCalib[V] =
-  match lhs:
-    Single(calib: cal1):
-      match rhs:
-        Single(calib: cal2):
-          result = combine[V](cal1, cal2)
-        _:
-          raiseAssert "fail"
-    _:
-      raiseAssert "fail"
+  result.calib = combine[V](lhs.calib, rhs.calib)
+
+proc combineComposite*[T, V](
+    lhs: ReadingCalib[T],
+    rhs: ReadingCalib[V],
+): CompositeReadingCalib[V] =
+  try:
+    result.calib = combine[V](lhs.calib, rhs.calib)
+  except KeyError:
+    result = combine[V](lhs.calib, rhs.calib)
+
+proc combine*[T, V](
+    lhs: ReadingCalib[T],
+    rhs: CompositeReadingCalib[V],
+): ReadingCalib[V] =
+  try:
+    result = combine[V](lhs.calib, rhs.pre)
+  except KeyError:
+    result = combine[V](lhs.calib, rhs.calib)
 
 
 
