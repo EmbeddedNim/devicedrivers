@@ -85,53 +85,6 @@ type
     pre*: BasicConversion
     calib*: BasicConversion
 
-type
-
-  ReadingCodes* {.persistent.} = enum
-    ## table of reading codes "persistent" enum 
-    rdAdcRawVolts
-    rdVolts
-    rdAmps
-    rdPressure
-    rdFlowKPa
-    rdDeltaFlowKPa
-
-  ## table of reading codes "persistent" enum 
-  RdAdcRawVolts* = distinct ReadingCode
-  RdVolts* = distinct ReadingCode
-  Rd420mAmps* = distinct Amps
-  RdPressure* = distinct ReadingCode
-  RdFlowKPa* = distinct ReadingCode
-  RdDeltaFlowKPa* = distinct ReadingCode
-  # ... etc
-
-
-type
-  AdcVoltsCalib* = ReadingCalib[Volts]
-  CurrentSenseCalib* = ReadingCalib[Amps]
-
-proc init*(
-    tp: typedesc[AdcVoltsCalib],
-    vref: Volts,
-    bits: range[0..64],
-    bipolar: bool,
-    gain: Gain,
-): AdcVoltsCalib =
-  ## initalize a calibration for adc-bits to voltage conversion
-  let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
-  let factor = vref.float32 / bitspace.float32
-  let conv = ScaleConv(f = factor / gain.float32)
-  result = ReadingCalib[Volts](calib: conv)
-
-
-proc init*(
-    tp: typedesc[CurrentSenseCalib],
-    resistor: Ohms,
-): CurrentSenseCalib =
-  ## initialize calibration for a shunt resistor based current sensor
-  let conv = ScaleConv(f = 1.0'f32 / resistor.float32)
-  result = ReadingCalib[Amps](calib: conv)
-
 
 ## Combined Calibrations (WIP)
 ## 
@@ -246,6 +199,55 @@ proc combine*[T, V](
     _:
       discard
 
+
+
+type
+  ReadingCodes* {.persistent.} = enum
+    ## table of reading codes "persistent" enum 
+    rdAdcRawVolts
+    rdVolts
+    rdAmps
+    rdPressure
+    rdFlowKPa
+    rdDeltaFlowKPa
+
+  ## table of reading codes "persistent" enum 
+  RdAdcRawVolts* = distinct ReadingCode
+  RdVolts* = distinct ReadingCode
+  Rd420mAmps* = distinct Amps
+  RdPressure* = distinct ReadingCode
+  RdFlowKPa* = distinct ReadingCode
+  RdDeltaFlowKPa* = distinct ReadingCode
+  # ... etc
+
+
+type
+  AdcVoltsCalib* = ReadingCalib[Volts]
+
+proc init*(
+    tp: typedesc[AdcVoltsCalib],
+    vref: Volts,
+    bits: range[0..64],
+    bipolar: bool,
+    gain: Gain,
+): AdcVoltsCalib =
+  ## initalize a calibration for adc-bits to voltage conversion
+  let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
+  let factor = vref.float32 / bitspace.float32
+  let conv = ScaleConv(f = factor / gain.float32)
+  result = ReadingCalib[Volts](calib: conv)
+
+
+type
+  CurrentSenseCalib* = ReadingCalib[Amps]
+
+proc init*(
+    tp: typedesc[CurrentSenseCalib],
+    resistor: Ohms,
+): CurrentSenseCalib =
+  ## initialize calibration for a shunt resistor based current sensor
+  let conv = ScaleConv(f = 1.0'f32 / resistor.float32)
+  result = ReadingCalib[Amps](calib: conv)
 
 
 ## Array of BasicConv for single layer 'static' conversions
