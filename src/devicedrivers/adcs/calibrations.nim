@@ -148,6 +148,9 @@ proc combine*(
 
     ScaleConv(f1):
       match rhs:
+        IdentityConv:
+          result = lhs
+
         ScaleConv(f2):
           result = ScaleConv(f = f1*f2)
 
@@ -164,6 +167,9 @@ proc combine*(
 
     LinearConv(m1, n1):
       match rhs:
+        IdentityConv:
+          result = lhs
+
         ScaleConv(f2):
           result = LinearConv(m = f2*m1, n = n1)
 
@@ -184,11 +190,27 @@ proc combine*(
           var lk = lk2.mapIt( (it - n1) / m1 )
           result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
-    Poly3Conv(a0, a1, a2):
-      discard
+    Poly3Conv(a1, b1, c1):
+      match rhs:
+        IdentityConv:
+          result = lhs
+
+        ScaleConv(f2):
+          result = Poly3Conv(a = a1*f2, b = b1*f2, c = c1*f2)
+
+        LinearConv(m2, n2):
+          # sympy: a1*m2 + b1*m2*x + c1*m2*x^2 + n2
+          result = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
+
+        Poly3Conv(a2, b2, c2):
+          raise newException(KeyError, "cannot combine poly3 with poly3")
+
+        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+          raise newException(KeyError, "cannot combine poly3 with lltable")
+
 
     LookupLowerBoundConv(llkeys, llvalues):
-      discard
+      raise newException(KeyError, "cannot combine poly3 with lltable")
 
 proc combine*[T, V](
     lhs: ReadingCalib[T],
