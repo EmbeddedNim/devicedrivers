@@ -56,9 +56,6 @@ type
     post*: BasicConversion
 
 
-## Combined Calibrations (WIP)
-## 
-
 proc reduce*[T, V](
     lhs: ReadingCalib[T],
     rhs: ReadingCalib[V],
@@ -86,25 +83,14 @@ proc combine*[T, V](
   except KeyError:
     raise newException(KeyError, fmt"cannot combine {lhs.calib.kind} with {rhs.pre.kind} to make a ")
 
+proc convert*[T, V](res: var V, val: T, calib: ReadingCalib[V]) =
+  ## converts a value using a given BasicConversion object
+  ## 
+  ## this is used for the core of calibrations
+  res.convert(val, calib.calib)
 
-type
-  ReadingCodes* {.persistent.} = enum
-    ## table of reading codes "persistent" enum 
-    rdAdcRawVolts
-    rdVolts
-    rdAmps
-    rdPressure
-    rdFlowKPa
-    rdDeltaFlowKPa
-
-  ## table of reading codes "persistent" enum 
-  RdAdcRawVolts* = distinct ReadingCode
-  RdVolts* = distinct ReadingCode
-  Rd420mAmps* = distinct Amps
-  RdPressure* = distinct ReadingCode
-  RdFlowKPa* = distinct ReadingCode
-  RdDeltaFlowKPa* = distinct ReadingCode
-  # ... etc
+proc convert*[T, V](calib: ReadingCalib[V], val: T): V =
+  result.convert(val, calib.calib)
 
 
 type
@@ -124,8 +110,7 @@ proc init*(
   result = ReadingCalib[Volts](calib: conv)
 
 
-type
-  CurrentSenseCalib* = ReadingCalib[Amps]
+type CurrentSenseCalib* = ReadingCalib[Amps]
 
 proc init*(
     tp: typedesc[CurrentSenseCalib],
@@ -140,8 +125,7 @@ proc init*(
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## 
 
-type
-  ChannelsCalibs*[N: static[int], V] = array[N, BasicConversion]
+type ChannelsCalibs*[N: static[int], V] = array[N, BasicConversion]
 
 
 proc convert*[N: static[int], T, V](
@@ -166,10 +150,8 @@ proc convert*[N: static[int], T, V](
   for i in 0 ..< N:
     result[i].convert(reading[i], calibration[i])
 
-type
 
-  VoltsCalibs*[N: static[int]] = ChannelsCalibs[N, Volts]
-
+type VoltsCalibs*[N: static[int]] = ChannelsCalibs[N, Volts]
 
 proc initAdcVoltsCalib*[N: static[int]](
     vref: Volts,

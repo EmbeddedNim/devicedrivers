@@ -14,19 +14,7 @@ import devicedrivers/adcs/calibrations
 
 suite "calibrations ":
 
-  test "test reading codes":
-    let vcalib = AdcVoltsCalib.init(vref=4.Volts,
-                                    bits=24,
-                                    bipolar=true,
-                                    gain = 2.0.Gain)
-    let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
-
-    # TODO: get this to work?
-    let mAReadingCalib: ReadingCalib[Amps] = reduce(vcalib, mAcalib)
-    echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
-    echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
-
-  test "test convert":
+  test "test basic convert":
     var calibs: ChannelsCalibs[3, Volts]
     calibs[0] = ScaleConv(f = 1.0e-1)
     calibs[1] = ScaleConv(f = 1.0e-2)
@@ -96,6 +84,38 @@ suite "calibrations ":
     unittest.check vreading[1].float32 ~= 0.0002384185791015625'f32
     unittest.check vreading[2].float32 ~= 4.0'f32
     unittest.check vreading[3].float32 ~= -4.0'f32
+
+  test "test basic calib convert":
+    let vcalib = AdcVoltsCalib.init(vref=4.Volts,
+                                    bits=24,
+                                    bipolar=true,
+                                    gain = 2.0.Gain)
+
+    # TODO: get this to work?
+    var reading: Volts
+
+    reading = vcalib.convert(Bits24.signed(0x7FFFFF))
+    assertNear reading, 2.0.Volts
+    reading = vcalib.convert(Bits24.signed(0x800000))
+    assertNear reading, -2.0.Volts
+
+  test "test calib convert":
+    let vcalib = AdcVoltsCalib.init(vref=4.Volts,
+                                    bits=24,
+                                    bipolar=true,
+                                    gain = 2.0.Gain)
+    let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
+
+    # TODO: get this to work?
+    let mAReadingCalib: ReadingCalib[Amps] = reduce(vcalib, mAcalib)
+    echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
+    echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
+
+    var reading: Amps
+
+    reading = mAReadingCalib.convert(0x7FFFFF.Bits24)
+    echo fmt"reading : {repr reading=}"
+
 
   # test "test generic kinds":
 

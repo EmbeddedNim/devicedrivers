@@ -56,7 +56,6 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
       let idx = keys.lowerBound(x)
       res = V(values[idx])
 
-
 proc reduce*(
     lhs: BasicConversion,
     rhs: BasicConversion,

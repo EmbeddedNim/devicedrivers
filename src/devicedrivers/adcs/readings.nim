@@ -19,3 +19,22 @@ type
     unit*: ReadingCode
     val*: float32
 
+
+type
+  ReadingCodes* {.persistent.} = enum
+    ## table of reading codes "persistent" enum 
+    rdAdcRawVolts
+    rdVolts
+    rdAmps
+    rdPressure
+    rdFlowKPa
+    rdDeltaFlowKPa
+
+  ## table of reading codes "persistent" enum 
+  RdAdcRawVolts* = distinct ReadingCode
+  RdVolts* = distinct ReadingCode
+  Rd420mAmps* = distinct Amps
+  RdPressure* = distinct ReadingCode
+  RdFlowKPa* = distinct ReadingCode
+  RdDeltaFlowKPa* = distinct ReadingCode
+  # ... etc
