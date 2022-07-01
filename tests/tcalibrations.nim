@@ -108,23 +108,21 @@ suite "calibrations ":
       bipolar=true,
       gain = 1.0.Gain
     )
-
-    var rawValue = vcalib.convert(Bits24(922_740))
+    
+    let raw4maBits = Bits24(922_740)
+    var rawValue = vcalib.convert(raw4maBits)
     assertNear rawValue, 0.440.Volts
 
-    let mAcalib = CurrentSenseCalib.init(
-      resistor = 110.Ohms
-    ) 
+    let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
 
-    # TODO: get this to work?
     let mAReadingCalib: ReadingCalib[Amps] = reduce(vcalib, mAcalib)
+
     echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
     echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
 
-    var reading: Amps
-
-    reading = mAReadingCalib.convert(Bits24.signed(0x7FFFFF))
+    var reading: Amps = mAReadingCalib.convert(raw4maBits)
     echo fmt"reading : {repr reading=}"
+    assertNear reading, 0.004.Amps
 
 
   # test "test generic kinds":
