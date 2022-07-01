@@ -195,9 +195,9 @@ proc combine*[T, V](
         Single(calib: cal2):
           result = combine[V](cal1, cal2)
         _:
-          discard
+          raiseAssert "fail"
     _:
-      discard
+      raiseAssert "fail"
 
 
 
