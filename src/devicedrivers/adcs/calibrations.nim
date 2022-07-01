@@ -89,7 +89,7 @@ type
 ## Combined Calibrations (WIP)
 ## 
 
-proc combine*(
+proc reduce*(
     lhs: BasicConversion,
     rhs: BasicConversion,
 ): BasicConversion =
@@ -184,30 +184,32 @@ proc combine*(
           raise newException(KeyError, "cannot combine lltable with lltable")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
-proc combine*[T, V](
+proc reduce*[T, V](
     lhs: ReadingCalib[T],
     rhs: ReadingCalib[V],
 ): ReadingCalib[V] =
-  result.calib = combine[V](lhs.calib, rhs.calib)
+  result.calib = reduce[V](lhs.calib, rhs.calib)
 
-proc combineComposite*[T, V](
+proc combine*[T, V](
     lhs: ReadingCalib[T],
     rhs: ReadingCalib[V],
 ): CompositeReadingCalib[V] =
   try:
-    result.calib = combine[V](lhs.calib, rhs.calib)
+    result.pre = IdentityConv()
+    result.post = reduce[V](lhs.calib, rhs.calib)
   except KeyError:
-    result = combine[V](lhs.calib, rhs.calib)
+    result.pre = lhs.calib
+    result.post = rhs.calib
 
 proc combine*[T, V](
     lhs: ReadingCalib[T],
     rhs: CompositeReadingCalib[V],
-): ReadingCalib[V] =
+): CompositeReadingCalib[V] =
   try:
-    result = combine[V](lhs.calib, rhs.pre)
+    let res = combine[V](lhs.calib, rhs.pre)
+    result.pre = res
   except KeyError:
-    result = combine[V](lhs.calib, rhs.calib)
-
+    raise newException(KeyError, fmt"cannot combine {lhs.calib.kind} with {rhs.pre.kind} to make a ")
 
 
 type
