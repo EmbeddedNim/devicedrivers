@@ -65,6 +65,12 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
       let idx = keys.lowerBound(x)
       res = V(values[idx])
 
+type
+
+  ReadingCalibKind* {.pure.} = enum
+    Single
+    Double
+    Closure
 
 type
 
@@ -76,17 +82,16 @@ type
 
 
   ReadingCalib*[T] = object
-    conv*: BasicConversion
+    code*: ReadingCode
+    case kind*: ReadingCalibKind
+    of Single:
+      calib*: BasicConversion
+    of Double:
+      pre*: BasicConversion
+      post*: BasicConversion
+    of Closure:
+      fn*: proc (val: float32): float32 {.closure.}
 
-  ReadingIdCalib* = object
-    kind*: ReadingCode
-    conv*: BasicConversion
-
-  GeneralCalib*[T] = object
-    pre*: BasicConversion
-    calib*: BasicConversion
-
-type
 
   ReadingCodes* {.persistent.} = enum
     ## table of reading codes "persistent" enum 
@@ -121,7 +126,8 @@ proc init*(
   ## initalize a calibration for adc-bits to voltage conversion
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
   let factor = vref.float32 / bitspace.float32
-  result.conv = ScaleConv(f = factor / gain.float32)
+  let conv = ScaleConv(f = factor / gain.float32)
+  result = ReadingCalib[Volts](kind: Single, calib: conv)
 
 
 proc init*(
@@ -129,16 +135,17 @@ proc init*(
     resistor: Ohms,
 ): CurrentSenseCalib =
   ## initialize calibration for a shunt resistor based current sensor
-  result.conv = ScaleConv(f = 1.0'f32 / resistor.float32)
+  let conv = ScaleConv(f = 1.0'f32 / resistor.float32)
+  result = ReadingCalib[Amps](kind: Single, calib: conv)
 
 
 ## Combined Calibrations (WIP)
 ## 
 
-proc combine*[T, V](
-    lhs: ReadingCalib[T],
-    rhs: ReadingCalib[V],
-): GeneralCalib[V] =
+proc combine*[V](
+    lhs: BasicConversion,
+    rhs: BasicConversion,
+): ReadingCalib[V] =
   # combine calibs??
 
   ## start from the most basic
@@ -295,6 +302,7 @@ proc initCurrentSenseCalib*[N: static[int]](
 
 
 when isMainModule:
+  import strformat
   let vcalib = AdcVoltsCalib.init(vref=4.Volts,
                                   bits=24,
                                   bipolar=true,
