@@ -1,27 +1,11 @@
-## ======================
-## Adc Calibration Module
-## ======================
+## ==================
+## Conversions Module
+## ==================
 ## 
-## The calibration module implements a system for calibrating readings
-## taken from an ADC. 
+## This module implements conversions used by calibrations. These
+## conversions constants are stored in the `BasicConversion` variant type. 
+## These objects can then be used with `convert` to convert a value. 
 ## 
-## TODO - WIP api is unstable
-## 
-## Configuration
-## -------------
-## TODO - once API is stabalized
-## 
-## 
-## Calibration Utils
-## ~~~~~~~~~~~~~~~~~
-## 
-## this section is the initial *volts calibration* for an adc
-##
-## Generic Type Name Conventions:
-## - `N` number of channels (must be static[int] for compile time)
-## - `T` actual reading type and implies incoming type
-## - `V` actual reading type but implies outgoing type
-## - `G` calibration factors array
 ## 
 
 import std/[math, algorithm, sequtils, options]
@@ -40,19 +24,24 @@ import adcutils
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 variantp BasicConversion:
-  # creates a Nim variant types
-  # Note: uses `patty` library to simplify variant types
+  ## Encapsulates basic unit conversion methods, like scaling values
+  ## by a constant or linear scaling that includes an offset.  
+  ## 
+  ## Note: uses `patty` library to simplify variant types
+  ## Warning: Be careful adding to this list 
   IdentityConv
   ScaleConv(f: float32)
   LinearConv(m: float32, n: float32)
   Poly3Conv(a, b, c: float32)
   LookupLowerBoundConv(llkeys: seq[float32], llvalues: seq[float32])
-  # ClosureGenericConv(fn: proc (x: float32): float32) # maybe, escape hatch?
 
 proc isIdentity*(conv: BasicConversion): bool =
   result = conv.kind == BasicConversionKind.IdentityConv
 
 proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
+  ## converts a value using a given BasicConversion object
+  ## 
+  ## this is used for the core of calibrations
   let x = val.float32
   match conv:
     IdentityConv:
@@ -68,15 +57,18 @@ proc convert*[T, V](res: var V, val: T, conv: BasicConversion) =
       res = V(values[idx])
 
 
-
-## Combined Calibrations (WIP)
-## 
-
 proc reduce*(
     lhs: BasicConversion,
     rhs: BasicConversion,
-): BasicConversion =
-  # combine calibs??
+): BasicConversion {.raises: [KeyError].} =
+  ## Try to reduce two conversions into one optimized conversion. 
+  ## 
+  ## This works for most basic conversions types even when combined
+  ## with the more complex conversions. However, anything beyond
+  ## `LinearConv` is not guaranteed to have a reducable form. 
+  ## 
+  ## raises `KeyError` there is no way to reduce two calibrations together
+  ## 
 
   ## start from the most basic
   match lhs:
