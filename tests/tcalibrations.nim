@@ -125,9 +125,15 @@ suite "calibrations ":
     echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
     echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
 
-    var reading: Amps = mAReadingCalib.convert(raw4maBits)
+    var reading: Amps
+
+    reading = mAReadingCalib.convert(raw4maBits)
     echo fmt"reading : {repr reading=}"
     assertNear reading, 0.004.Amps
+
+    reading = mAReadingCalib.convert(raw20maBits)
+    echo fmt"reading : {repr reading=}"
+    assertNear reading, 0.020.Amps
 
 
   # test "test generic kinds":
