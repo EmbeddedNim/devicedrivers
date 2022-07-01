@@ -105,8 +105,7 @@ proc init*(
 ): AdcVoltsCalib =
   ## initalize a calibration for adc-bits to voltage conversion
   let bitspace = if bipolar: 2^(bits-1) - 1 else: 2^(bits) - 1
-  let factor = vref.float32 / bitspace.float32
-  let conv = ScaleConv(f = factor / gain.float32)
+  let conv = ScaleConv(f = vref.float32 / bitspace.float64 / gain.float32)
   result = ReadingCalib[Volts](calib: conv)
 
 

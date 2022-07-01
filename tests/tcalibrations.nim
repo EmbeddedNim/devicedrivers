@@ -109,6 +109,9 @@ suite "calibrations ":
       gain = 1.0.Gain
     )
 
+    var rawValue = vcalib.convert(Bits24(922_740))
+    assertNear rawValue, 0.440.Volts
+
     let mAcalib = CurrentSenseCalib.init(
       resistor = 110.Ohms
     ) 
