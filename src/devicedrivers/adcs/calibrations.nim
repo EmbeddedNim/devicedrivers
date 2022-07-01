@@ -217,6 +217,9 @@ proc combine*(
           var lv = lv1.mapIt(it * f2)
           result = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
 
+        LinearConv(m2, n2):
+          raise newException(KeyError, "cannot combine lltable with poly3")
+
         Poly3Conv(a2, b2, c2):
           raise newException(KeyError, "cannot combine lltable with poly3")
 
