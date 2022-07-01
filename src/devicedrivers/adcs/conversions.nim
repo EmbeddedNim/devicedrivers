@@ -130,11 +130,11 @@ proc reduce*(
           # sympy: a1*m2 + b1*m2*x + c1*m2*x^2 + n2
           result = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
 
-        Poly3Conv(a2, b2, c2):
+        Poly3Conv():
           raise newException(KeyError, "cannot combine poly3 with poly3")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
-        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+        LookupLowerBoundConv():
           raise newException(KeyError, "cannot combine poly3 with lltable")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
@@ -147,15 +147,15 @@ proc reduce*(
           var lv = lv1.mapIt(it * f2)
           result = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
 
-        LinearConv(m2, n2):
+        LinearConv():
           raise newException(KeyError, "cannot combine lltable with poly3")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
-        Poly3Conv(a2, b2, c2):
+        Poly3Conv():
           raise newException(KeyError, "cannot combine lltable with poly3")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
-        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+        LookupLowerBoundConv():
           raise newException(KeyError, "cannot combine lltable with lltable")
           # result = ReadingCalib[V](pre: lhs, calib: rhs)
 
