@@ -208,9 +208,20 @@ proc combine*(
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
           raise newException(KeyError, "cannot combine poly3 with lltable")
 
+    LookupLowerBoundConv(lk1, lv1):
+      match rhs:
+        IdentityConv:
+          result = lhs
+        
+        ScaleConv(f2):
+          var lv = lv1.mapIt(it * f2)
+          result = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
 
-    LookupLowerBoundConv(llkeys, llvalues):
-      raise newException(KeyError, "cannot combine poly3 with lltable")
+        Poly3Conv(a2, b2, c2):
+          raise newException(KeyError, "cannot combine lltable with poly3")
+
+        LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
+          raise newException(KeyError, "cannot combine lltable with lltable")
 
 proc combine*[T, V](
     lhs: ReadingCalib[T],
