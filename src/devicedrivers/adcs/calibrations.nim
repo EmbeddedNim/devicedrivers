@@ -82,9 +82,9 @@ type
     kind*: ReadingCode
     conv*: BasicConversion
 
-  CombinedCalibs*[T] = object
+  GeneralCalib*[T] = object
     pre*: BasicConversion
-    post*: BasicConversion
+    calib*: BasicConversion
 
 type
 
@@ -135,46 +135,45 @@ proc init*(
 ## Combined Calibrations (WIP)
 ## 
 
-proc combine*(
-    lhs: BasicConversion,
-    rhs: BasicConversion,
-): BasicConversion =
+proc combine*[T, V](
+    lhs: ReadingCalib[T],
+    rhs: ReadingCalib[V],
+): GeneralCalib[V] =
   # combine calibs??
 
   ## start from the most basic
-  match lhs:
+  match lhs.conv:
     IdentityConv:
-      result = rhs
+      result.calib = rhs.conv
 
     ScaleConv(f1):
-      match rhs:
+      match rhs.conv:
         IdentityConv:
-          result = lhs
+          result.calib = lhs.conv
 
         ScaleConv(f2):
-          result = ScaleConv(f = f1*f2)
+          result.calib = ScaleConv(f = f1*f2)
 
         LinearConv(m2, n2):
-          result = LinearConv(m = f1*m2, n = n2)
+          result.calib = LinearConv(m = f1*m2, n = n2)
 
         Poly3Conv(a2, b2, c2):
-          result = Poly3Conv(a = a2, b = f1*b2, c = f1^2*c2)
+          result.calib = Poly3Conv(a = a2, b = f1*b2, c = f1^2*c2)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
           var lk = lk2.mapIt(it / f1)
-          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
-
+          result.calib = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
     LinearConv(m1, n1):
-      match rhs:
+      match rhs.conv:
         IdentityConv:
-          result = lhs
+          result.calib = lhs.conv
 
         ScaleConv(f2):
-          result = LinearConv(m = f2*m1, n = n1)
+          result.calib = LinearConv(m = f2*m1, n = n1)
 
         LinearConv(m2, n2):
-          result = LinearConv(m = m1*m2, n = m2*n1 + n2)
+          result.calib = LinearConv(m = m1*m2, n = m2*n1 + n2)
 
         Poly3Conv(a2, b2, c2):
           # from sympy:
@@ -182,69 +181,56 @@ proc combine*(
           let a = a2 + b2*n1 + c2*n1^2
           let b = b2*m1 + 2*c2*m1*n1
           let c = c2*m1^2
-          result = Poly3Conv(a = a, b = b, c = c)
+          result.calib = Poly3Conv(a = a, b = b, c = c)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
           # sympy: ' k1 > m1 * x + n1'
           # so: ' (k1 - n1) / m1 > x'
           var lk = lk2.mapIt( (it - n1) / m1 )
-          result = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
+          result.calib = LookupLowerBoundConv(llkeys = lk, llvalues = lv2)
 
     Poly3Conv(a1, b1, c1):
-      match rhs:
+      match rhs.conv:
         IdentityConv:
-          result = lhs
+          result.calib = lhs.conv
 
         ScaleConv(f2):
-          result = Poly3Conv(a = a1*f2, b = b1*f2, c = c1*f2)
+          result.calib = Poly3Conv(a = a1*f2, b = b1*f2, c = c1*f2)
 
         LinearConv(m2, n2):
           # sympy: a1*m2 + b1*m2*x + c1*m2*x^2 + n2
-          result = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
+          result.calib = Poly3Conv(a = a1+m2+n2, b = b1*m2, c = c1*m2)
 
         Poly3Conv(a2, b2, c2):
-          raise newException(KeyError, "cannot combine poly3 with poly3")
+          # raise newException(KeyError, "cannot combine poly3 with poly3")
+          result = GeneralCalib[V](pre: lhs.conv, calib: rhs.conv)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
-          raise newException(KeyError, "cannot combine poly3 with lltable")
+          # raise newException(KeyError, "cannot combine poly3 with lltable")
+          result = GeneralCalib[V](pre: lhs.conv, calib: rhs.conv)
 
     LookupLowerBoundConv(lk1, lv1):
-      match rhs:
+      match rhs.conv:
         IdentityConv:
-          result = lhs
+          result.calib = lhs.conv
         
         ScaleConv(f2):
           var lv = lv1.mapIt(it * f2)
-          result = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
+          result.calib = LookupLowerBoundConv(llkeys = lk1, llvalues = lv)
 
         LinearConv(m2, n2):
-          raise newException(KeyError, "cannot combine lltable with poly3")
+          # raise newException(KeyError, "cannot combine lltable with poly3")
+          result = GeneralCalib[V](pre: lhs.conv, calib: rhs.conv)
 
         Poly3Conv(a2, b2, c2):
-          raise newException(KeyError, "cannot combine lltable with poly3")
+          # raise newException(KeyError, "cannot combine lltable with poly3")
+          result = GeneralCalib[V](pre: lhs.conv, calib: rhs.conv)
 
         LookupLowerBoundConv(llkeys: lk2, llvalues: lv2):
-          raise newException(KeyError, "cannot combine lltable with lltable")
-
-proc combine*[T, V](
-    lhs: ReadingCalib[T],
-    rhs: ReadingCalib[V],
-): ReadingCalib[V] =
-  echo "combine"
-  let lc = lhs.conv
-  echo "combine:lc:", lc
-  let rc = rhs.conv
-  echo "combine:rc:", rc
-  result = ReadingCalib[V](conv: combine(lhs.conv, rhs.conv))
+          # raise newException(KeyError, "cannot combine lltable with lltable")
+          result = GeneralCalib[V](pre: lhs.conv, calib: rhs.conv)
 
 
-proc compose*[T, V](
-    a: CombinedCalibs[T],
-    b: CombinedCalibs[V],
-): CombinedCalibs[V] =
-  # combine calibs??
-  echo "combine"
-  discard
 
 
 ## Array of BasicConv for single layer 'static' conversions
@@ -305,3 +291,18 @@ proc initCurrentSenseCalib*[N: static[int]](
   ## initialize calibration for a shunt resistor based current sensor
   for i in 0 ..< N:
     result[i] = ScaleConv(f = 1.0'f32 / resistors[i])
+
+
+
+when isMainModule:
+  let vcalib = AdcVoltsCalib.init(vref=4.Volts,
+                                  bits=24,
+                                  bipolar=true,
+                                  gain = 2.0.Gain)
+  let mAcalib = CurrentSenseCalib.init(resistor = 110.Ohms) 
+
+  # TODO: get this to work?
+  let mAReadingCalib: ReadingCalib[Amps] = combine(vcalib, mAcalib)
+  echo fmt"mAReadingCalib : {mAReadingCalib.repr()=}"
+  echo fmt"mAReadingCalib : {$typeof(mAReadingCalib )=}"
+
