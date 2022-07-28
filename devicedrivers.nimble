@@ -12,6 +12,7 @@ srcDir        = "src"
 requires "nim >= 1.6.0"
 requires "print >= 1.0.2" # pretty colored print
 requires "cdecl >= 0.5.4"
+requires "patty >= 0.3.4"
 
 requires "mcu_utils >= 0.3.3"
 requires "fastrpc >= 0.2.0"
