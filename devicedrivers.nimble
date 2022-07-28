@@ -13,5 +13,6 @@ requires "nim >= 1.6.0"
 requires "print >= 1.0.2" # pretty colored print
 requires "cdecl >= 0.5.4"
 
-requires "https://github.com/EmbeddedNim/mcu_utils#head"
-requires "https://github.com/EmbeddedNim/fastrpc#head"
+requires "mcu_utils >= 0.3.3"
+requires "fastrpc >= 0.2.0"
+requires "nephyr >= 0.3.2"
