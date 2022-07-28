@@ -27,6 +27,7 @@ export inetqueues
 
 
 const
+  CHS = 4
   DEFAULT_BATCH_SIZE = 10
   WAKE_COUNT = 400
 
@@ -46,21 +47,21 @@ let
       
 
 type
-  AdcDataQ* = InetEventQueue[AdcReading]
+  AdcDataQ*[N: static[int]] = InetEventQueue[AdcReading[N, Bits32]]
 
-  AdcOptions* = ref object
+  AdcOptions*[N] = ref object
     batch*: int
-    ads*: Ads131Driver
+    ads*: Ads131Driver[CHS]
     lock: Lock
     timerCond: Cond
     serializeCond: Cond
 
   AdcReadingBatch* = ref object
     size: int
-    readings: array[DEFAULT_BATCH_SIZE, AdcReading]
+    readings: array[DEFAULT_BATCH_SIZE, AdcReading[CHS, Bits32]]
 
 
-proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
+proc newAdcOptions*[N](batch: int, ads: Ads131Driver[N]): AdcOptions =
   ## initialize a new adc option type, including locks 
   result = AdcOptions(batch: batch, ads: ads)
   initLock(result.lock)
@@ -73,12 +74,12 @@ proc newAdcOptions*(batch: int, ads: Ads131Driver): AdcOptions =
 ## ========================================================================= ##
 
 var
-  adcUdpQ*: AdcDataQ
+  adcUdpQ*: AdcDataQ[CHS]
 
 var
-  adcTimerOpts: AdcOptions
+  adcTimerOpts: AdcOptions[CHS]
 
-  adsDriver: Ads131Driver
+  adsDriver: Ads131Driver[CHS]
   adsMaddr: InetClientHandle
 
   timeA, timeB: Micros
@@ -93,8 +94,8 @@ var
   serdeLastByteCount = 0.BytesSz
 
   ## Globals for adc serialization
-  lastReading = micros()
-  batch  = newSeq[AdcReading](10)
+  lastReading = currTimeSenML()
+  batch  = newSeq[AdcReading[CHS, Bits32]](10)
   msgBuf: MsgBuffer
   smls = newSeqOfCap[SmlReadingI](2*batch.len())
 
@@ -134,22 +135,22 @@ proc timingPrints() =
     wakeStr &= $avgReadDt.int
     logDebug wakeStr
 
-
 ## ========================================================================= ##
 ## Thread to take ADC Readings 
 ## ========================================================================= ##
 
-proc adcSampler*(queue: AdcDataQ, ads: Ads131Driver) =
+proc adcSampler*[N](queue: AdcDataQ[N], ads: Ads131Driver[N]) =
   ## Thread example that runs the as a time publisher. This is a reducer
   ## that gathers time samples and outputs arrays of timestamp samples.
-  var reading: AdcReading
+  var reading: AdcReading[N, Bits32]
 
   # if wakeCount mod WAKE_COUNT == 0:
     # logInfo("[adcSampler]", "reading")
-  ads.readChannels(reading, ads.maxChannelCount)
+  logDebug "[adcSample] taking reading ... "
+  ads.readChannels(reading)
 
   # tag reading time and put in queue
-  reading.ts = micros()
+  reading.setTimestamp()
   var qvals = isolate reading
   discard queue.chan.trySend(qvals)
 
@@ -188,9 +189,9 @@ proc adcSerializer*(queue: AdcDataQ) =
     batch.setLen(idx)
     # echo "serde:msgBuf: " & $msgBuf.pos
 
-    let ts = micros()
+    let ts = currTimeSenML()
     smls.setLen(0)
-    smls.add SmlReadingI(kind: BaseNT, ts: ts.timeSenML(), name: MacAddressArr)
+    smls.add SmlReadingI(kind: BaseNT, ts: ts, name: MacAddressArr)
     lastReading = ts
 
     logExtraDebug("[adcSampler]", fmt"{batch.len()=}")
@@ -219,8 +220,8 @@ proc adcSerializer*(queue: AdcDataQ) =
 
     
     for reading in batch:
-      for i in 0..<reading.channel_count:
-        let tsr = timeSenML(reading.ts - ts)
+      for i in 0..<reading.count:
+        let tsr = reading.ts.timeSenML() - ts
 
         # voltage channels
         # vName.data[1] = char(i + ord('0'))
@@ -316,7 +317,7 @@ proc initMCastStreamer*(
 
   var
     topt = TaskOption[AdcOptions](data: adcTimerOpts)
-    arg = ThreadArg[AdcReading, AdcOptions](queue: adcUdpQ, opt: topt)
+    arg = ThreadArg[AdcReading[Bits32], AdcOptions](queue: adcUdpQ, opt: topt)
 
   adsMaddr = maddr
   adsDriver = ads 
