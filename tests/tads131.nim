@@ -44,7 +44,7 @@ suite "bit ops":
     print gn
     unittest.check gn == ChGain.X2
 
-  test "ch set x16":
+  test "ch set x12":
     regChSet1.gain = ChGain.X12
     print $regChSet1
     print regChSet1.uint8.toHex()
@@ -54,7 +54,7 @@ suite "bit ops":
     unittest.check regChSet1.uint8 == 0x60
 
   test "test toVolts":
-    var calib = initVoltsCalib[4](
+    var calib = initAdcVoltsCalib[4](
       vref = 4.Volts,
       bits = 24,
       bipolar = true,
