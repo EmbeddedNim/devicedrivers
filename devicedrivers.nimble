@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Jaremy J. Creechley"
 description   = "Embedded Device Driver library"
 license       = "Apache-2.0"
